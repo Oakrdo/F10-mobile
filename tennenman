@@ -1,4 +1,4 @@
--- Auto Farm Tennenman com Teleport - Dragon Ball Rage (Versão Corrigida)
+-- Auto Farm Tennenman com Teleport - Dragon Ball Rage
 -- Por: DeepSeek-R1
 
 wait(2)
@@ -95,161 +95,112 @@ searchButton.TextColor3 = Color3.new(1, 1, 1)
 searchButton.TextScaled = true
 searchButton.Parent = buttonFrame
 
--- Função para explorar e encontrar a estrutura correta
-local function findCorrectStructure()
-    print("🔍 Explorando estrutura do Workspace...")
-    
-    -- Listar tudo no Workspace para debug
-    print("📁 Conteúdo do Workspace:")
-    for _, child in pairs(Workspace:GetChildren()) do
-        print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
-        
-        -- Se for uma pasta, explorar seu conteúdo
-        if child:IsA("Folder") then
-            for _, subChild in pairs(child:GetChildren()) do
-                print("     ├── " .. subChild.Name .. " (" .. subChild.ClassName .. ")")
-                
-                -- Se for a pasta NPCs, explorar mais
-                if string.find(subChild.Name:lower(), "npc") then
-                    for _, npc in pairs(subChild:GetChildren()) do
-                        print("     │   ├── " .. npc.Name .. " (" .. npc.ClassName .. ")")
-                    end
-                end
-            end
-        end
-    end
-end
-
--- Função para encontrar NPCs Tennenman
+-- Função para encontrar NPCs Tennenman na estrutura correta
 local function findTennenmanNPCs()
     tennenmanNPCs = {}
     
-    print("🔍 Procurando Tennenman...")
+    print("🔍 Procurando Tennenman na estrutura: Map → NPCs → tennenman")
     
-    -- Tentar diferentes estruturas possíveis
-    local possibleStructures = {
-        Workspace:FindFirstChild("Map"),
-        Workspace:FindFirstChild("Maps"),
-        Workspace:FindFirstChild("NPCs"),
-        Workspace:FindFirstChild("Enemies"),
-        Workspace:FindFirstChild("Characters")
-    }
-    
-    local foundStructure = nil
-    local foundNPCs = false
-    
-    for _, structure in pairs(possibleStructures) do
-        if structure then
-            print("✅ Estrutura encontrada: " .. structure.Name)
-            foundStructure = structure
-            break
-        end
-    end
-    
-    if not foundStructure then
-        -- Se não encontrou nenhuma estrutura conhecida, procurar em todo o Workspace
-        print("🔍 Procurando Tennenman em todo o Workspace...")
-        for _, descendant in pairs(Workspace:GetDescendants()) do
-            if descendant:IsA("Model") and string.find(descendant.Name:lower(), "tennen") then
-                print("🎯 Tennenman encontrado: " .. getFullPath(descendant))
-                
-                local rootPartNPC = descendant:FindFirstChild("HumanoidRootPart")
-                local humanoidNPC = descendant:FindFirstChildOfClass("Humanoid")
-                
-                if rootPartNPC and humanoidNPC and humanoidNPC.Health > 0 then
-                    local distance = (rootPartNPC.Position - rootPart.Position).Magnitude
-                    
-                    if distance <= FARM_RANGE then
-                        table.insert(tennenmanNPCs, {
-                            Model = descendant,
-                            RootPart = rootPartNPC,
-                            Humanoid = humanoidNPC,
-                            Position = rootPartNPC.Position,
-                            Distance = distance
-                        })
-                        foundNPCs = true
-                        print("✅ Tennenman adicionado - Distância: " .. math.floor(distance))
-                    end
-                end
-            end
-        end
-    else
-        -- Procurar na estrutura encontrada
-        print("🔍 Procurando na estrutura: " .. foundStructure.Name)
+    -- Procurar na estrutura correta: Map → NPCs → tennenman
+    local mapFolder = Workspace:FindFirstChild("Map")
+    if not mapFolder then
+        infoLabel.Text = "❌ Pasta Map não encontrada"
+        print("❌ Pasta 'Map' não encontrada no Workspace")
         
-        -- Procurar por NPCs dentro da estrutura
-        for _, descendant in pairs(foundStructure:GetDescendants()) do
-            if descendant:IsA("Model") and string.find(descendant.Name:lower(), "tennen") then
-                print("🎯 Tennenman encontrado: " .. getFullPath(descendant))
-                
-                local rootPartNPC = descendant:FindFirstChild("HumanoidRootPart")
-                local humanoidNPC = descendant:FindFirstChildOfClass("Humanoid")
-                
-                if rootPartNPC and humanoidNPC and humanoidNPC.Health > 0 then
-                    local distance = (rootPartNPC.Position - rootPart.Position).Magnitude
-                    
-                    if distance <= FARM_RANGE then
-                        table.insert(tennenmanNPCs, {
-                            Model = descendant,
-                            RootPart = rootPartNPC,
-                            Humanoid = humanoidNPC,
-                            Position = rootPartNPC.Position,
-                            Distance = distance
-                        })
-                        foundNPCs = true
-                        print("✅ Tennenman adicionado - Distância: " .. math.floor(distance))
-                    end
-                end
-            end
+        -- Listar o que tem no Workspace para debug
+        print("📁 Conteúdo do Workspace:")
+        for _, child in pairs(Workspace:GetChildren()) do
+            print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
         end
+        return 0
     end
     
-    if not foundNPCs then
-        -- Busca mais ampla por qualquer modelo com "tennen" no nome
-        print("🔍 Busca ampla por Tennenman...")
-        for _, descendant in pairs(Workspace:GetDescendants()) do
-            if descendant:IsA("Model") and (
-                string.find(descendant.Name:lower(), "tennen") or
-                string.find(descendant.Name:lower(), "tenen") or
-                string.find(descendant.Name:lower(), "tenman")
-            ) then
-                print("🎯 Possível Tennenman: " .. getFullPath(descendant))
-                
-                local rootPartNPC = descendant:FindFirstChild("HumanoidRootPart") or descendant:FindFirstChild("Head")
-                local humanoidNPC = descendant:FindFirstChildOfClass("Humanoid")
-                
-                if rootPartNPC and humanoidNPC and humanoidNPC.Health > 0 then
-                    local distance = (rootPartNPC.Position - rootPart.Position).Magnitude
-                    
-                    if distance <= FARM_RANGE then
-                        table.insert(tennenmanNPCs, {
-                            Model = descendant,
-                            RootPart = rootPartNPC,
-                            Humanoid = humanoidNPC,
-                            Position = rootPartNPC.Position,
-                            Distance = distance
-                        })
-                        foundNPCs = true
-                        print("✅ Tennenman adicionado - Distância: " .. math.floor(distance))
-                    end
-                end
-            end
+    print("✅ Pasta Map encontrada!")
+    
+    local npcsFolder = mapFolder:FindFirstChild("NPCs")
+    if not npcsFolder then
+        infoLabel.Text = "❌ Pasta NPCs não encontrada"
+        print("❌ Pasta 'NPCs' não encontrada em Map")
+        
+        -- Listar o que tem na pasta Map
+        print("📁 Conteúdo da pasta Map:")
+        for _, child in pairs(mapFolder:GetChildren()) do
+            print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
         end
+        return 0
     end
     
-    infoLabel.Text = "NPCs: " .. #tennenmanNPCs
+    print("✅ Pasta NPCs encontrada!")
+    
+    -- Procurar pelo model "tennenman" (com m minúsculo)
+    local tennenmanModel = npcsFolder:FindFirstChild("tennenman")
+    if not tennenmanModel then
+        infoLabel.Text = "❌ Model tennenman não encontrado"
+        print("❌ Model 'tennenman' não encontrado na pasta NPCs")
+        
+        -- Listar o que tem na pasta NPCs para debug
+        print("📁 Conteúdo da pasta NPCs:")
+        for _, child in pairs(npcsFolder:GetChildren()) do
+            print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
+        end
+        return 0
+    end
+    
+    print("✅ Tennenman encontrado: " .. tennenmanModel.Name)
+    
+    -- Procurar por HumanoidRootPart no model tennenman
+    local rootPartTennenman = tennenmanModel:FindFirstChild("HumanoidRootPart")
+    if not rootPartTennenman then
+        infoLabel.Text = "❌ HumanoidRootPart não encontrado"
+        print("❌ HumanoidRootPart não encontrado no model tennenman")
+        
+        -- Listar o que tem no model tennenman para debug
+        print("📁 Conteúdo do model tennenman:")
+        for _, child in pairs(tennenmanModel:GetChildren()) do
+            print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
+        end
+        return 0
+    end
+    
+    -- Verificar se tem Humanoid
+    local humanoidTennenman = tennenmanModel:FindFirstChildOfClass("Humanoid")
+    if not humanoidTennenman then
+        infoLabel.Text = "❌ Humanoid não encontrado"
+        print("❌ Humanoid não encontrado no model tennenman")
+        return 0
+    end
+    
+    -- Verificar se está vivo
+    if humanoidTennenman.Health <= 0 then
+        infoLabel.Text = "💀 Tennenman morto"
+        print("💀 Tennenman está morto (Health: " .. humanoidTennenman.Health .. ")")
+        return 0
+    end
+    
+    -- Calcular distância
+    local distance = (rootPartTennenman.Position - rootPart.Position).Magnitude
+    
+    if distance <= FARM_RANGE then
+        table.insert(tennenmanNPCs, {
+            Model = tennenmanModel,
+            RootPart = rootPartTennenman,
+            Humanoid = humanoidTennenman,
+            Position = rootPartTennenman.Position,
+            Distance = distance
+        })
+        
+        print("✅ Tennenman adicionado!")
+        print("📍 Distância: " .. math.floor(distance) .. " studs")
+        print("❤️ Saúde: " .. humanoidTennenman.Health)
+        print("🎯 Posição: " .. tostring(rootPartTennenman.Position))
+        
+        infoLabel.Text = "NPCs: " .. #tennenmanNPCs .. " | Saúde: " .. humanoidTennenman.Health
+    else
+        infoLabel.Text = "📏 Muito longe: " .. math.floor(distance)
+        print("📏 Tennenman muito longe: " .. math.floor(distance) .. " studs")
+    end
+    
     return #tennenmanNPCs
-end
-
--- Função auxiliar para obter caminho completo
-local function getFullPath(obj)
-    local path = obj.Name
-    local parent = obj.Parent
-    while parent and parent ~= Workspace do
-        path = parent.Name .. " → " .. path
-        parent = parent.Parent
-    end
-    return "Workspace → " .. path
 end
 
 -- Função para teleportar instantaneamente
@@ -308,15 +259,15 @@ local function farmLoop()
         end
         
         -- Buscar NPCs
-        findTennenmanNPCs()
+        local found = findTennenmanNPCs()
         
-        if #tennenmanNPCs > 0 then
+        if found > 0 then
             currentTarget = tennenmanNPCs[1]
             
             if isTargetValid(currentTarget) then
                 statusLabel.Text = "🟢 ATACANDO TENNENMAN"
                 statusLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
-                infoLabel.Text = "NPCs: " .. #tennenmanNPCs .. " | Saúde: " .. currentTarget.Humanoid.Health
+                infoLabel.Text = "NPCs: " .. found .. " | Saúde: " .. currentTarget.Humanoid.Health
                 
                 -- Teleportar para perto do Tennenman
                 teleportTo(currentTarget.Position)
@@ -334,8 +285,8 @@ local function farmLoop()
                 -- Tennenman morreu
                 statusLabel.Text = "🟡 TENNENMAN MORREU"
                 statusLabel.TextColor3 = Color3.new(1, 1, 0.5)
-                table.remove(tennenmanNPCs, 1) -- Remover da lista
-                wait(1)
+                tennenmanNPCs = {} -- Limpar lista
+                wait(2) -- Esperar respawn
             end
             
         else
@@ -358,8 +309,8 @@ toggleButton.MouseButton1Click:Connect(function()
         statusLabel.Text = "🟢 INICIANDO..."
         statusLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
         
-        -- Explorar estrutura primeiro
-        findCorrectStructure()
+        -- Forçar atualização inicial
+        findTennenmanNPCs()
         
         -- Iniciar loop de farm
         farmLoop()
@@ -398,8 +349,7 @@ end)
 
 -- Inicialização
 print("🐉 Auto Farm Tennenman carregado!")
-print("Explorando estrutura do jogo...")
-findCorrectStructure()
+print("Estrutura: Map → NPCs → tennenman")
 findTennenmanNPCs()
 
 print("▶ INICIAR - Começa o farm automático")
