@@ -99,19 +99,13 @@ searchButton.Parent = buttonFrame
 local function findTennenmanNPCs()
     tennenmanNPCs = {}
     
-    print("🔍 Procurando Tennenman na estrutura: Map → NPCs → tennenman")
+    print("🔍 Procurando Tennenman na estrutura: Map → NPCs → Tennenman")
     
-    -- Procurar na estrutura correta: Map → NPCs → tennenman
+    -- Procurar na estrutura correta: Map → NPCs → Tennenman
     local mapFolder = Workspace:FindFirstChild("Map")
     if not mapFolder then
         infoLabel.Text = "❌ Pasta Map não encontrada"
         print("❌ Pasta 'Map' não encontrada no Workspace")
-        
-        -- Listar o que tem no Workspace para debug
-        print("📁 Conteúdo do Workspace:")
-        for _, child in pairs(Workspace:GetChildren()) do
-            print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
-        end
         return 0
     end
     
@@ -121,44 +115,26 @@ local function findTennenmanNPCs()
     if not npcsFolder then
         infoLabel.Text = "❌ Pasta NPCs não encontrada"
         print("❌ Pasta 'NPCs' não encontrada em Map")
-        
-        -- Listar o que tem na pasta Map
-        print("📁 Conteúdo da pasta Map:")
-        for _, child in pairs(mapFolder:GetChildren()) do
-            print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
-        end
         return 0
     end
     
     print("✅ Pasta NPCs encontrada!")
     
-    -- Procurar pelo model "tennenman" (com m minúsculo)
-    local tennenmanModel = npcsFolder:FindFirstChild("tennenman")
+    -- Procurar pelo model "Tennenman" (com T maiúsculo)
+    local tennenmanModel = npcsFolder:FindFirstChild("Tennenman")
     if not tennenmanModel then
-        infoLabel.Text = "❌ Model tennenman não encontrado"
-        print("❌ Model 'tennenman' não encontrado na pasta NPCs")
-        
-        -- Listar o que tem na pasta NPCs para debug
-        print("📁 Conteúdo da pasta NPCs:")
-        for _, child in pairs(npcsFolder:GetChildren()) do
-            print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
-        end
+        infoLabel.Text = "❌ Model Tennenman não encontrado"
+        print("❌ Model 'Tennenman' não encontrado na pasta NPCs")
         return 0
     end
     
     print("✅ Tennenman encontrado: " .. tennenmanModel.Name)
     
-    -- Procurar por HumanoidRootPart no model tennenman
+    -- Procurar por HumanoidRootPart no model Tennenman
     local rootPartTennenman = tennenmanModel:FindFirstChild("HumanoidRootPart")
     if not rootPartTennenman then
         infoLabel.Text = "❌ HumanoidRootPart não encontrado"
-        print("❌ HumanoidRootPart não encontrado no model tennenman")
-        
-        -- Listar o que tem no model tennenman para debug
-        print("📁 Conteúdo do model tennenman:")
-        for _, child in pairs(tennenmanModel:GetChildren()) do
-            print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
-        end
+        print("❌ HumanoidRootPart não encontrado no model Tennenman")
         return 0
     end
     
@@ -166,7 +142,7 @@ local function findTennenmanNPCs()
     local humanoidTennenman = tennenmanModel:FindFirstChildOfClass("Humanoid")
     if not humanoidTennenman then
         infoLabel.Text = "❌ Humanoid não encontrado"
-        print("❌ Humanoid não encontrado no model tennenman")
+        print("❌ Humanoid não encontrado no model Tennenman")
         return 0
     end
     
@@ -349,7 +325,7 @@ end)
 
 -- Inicialização
 print("🐉 Auto Farm Tennenman carregado!")
-print("Estrutura: Map → NPCs → tennenman")
+print("Estrutura: Map → NPCs → Tennenman")
 findTennenmanNPCs()
 
 print("▶ INICIAR - Começa o farm automático")
