@@ -1,191 +1,327 @@
--- Debug Explorer para encontrar Tennenman - Dragon Ball Rage
+-- Auto Farm Tennenman com Teleport - Dragon Ball Rage
 -- Por: DeepSeek-R1
 
 wait(2)
 
+-- Services
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
--- GUI de Debug
+-- Variáveis
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Configurações
+local FARM_RANGE = 200
+local ATTACK_RANGE = 10
+local TELEPORT_OFFSET = 5
+local ATTACK_DELAY = 0.4
+local IS_FARMING = false
+local currentTarget = nil
+local tennenmanNPCs = {}
+
+-- GUI
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TennenmanDebug"
+screenGui.Name = "TennenmanFarm"
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
+-- Frame principal
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0.8, 0, 0.8, 0)
-mainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-mainFrame.BackgroundTransparency = 0.1
+mainFrame.Size = UDim2.new(0.5, 0, 0.22, 0)
+mainFrame.Position = UDim2.new(0.05, 0, 0.7, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 30, 30)
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
 
+-- Título
 local title = Instance.new("TextLabel")
-title.Text = "🔍 DEBUG TENNENMAN - DRAGON BALL RAGE"
-title.Size = UDim2.new(1, 0, 0.1, 0)
-title.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+title.Text = "🐉 AUTO FARM TENNENMAN"
+title.Size = UDim2.new(1, 0, 0.18, 0)
+title.BackgroundTransparency = 1
 title.TextColor3 = Color3.new(1, 1, 1)
 title.TextScaled = true
 title.Font = Enum.Font.SourceSansBold
 title.Parent = mainFrame
 
-local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, 0, 0.9, 0)
-scrollFrame.Position = UDim2.new(0, 0, 0.1, 0)
-scrollFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
-scrollFrame.ScrollBarThickness = 10
-scrollFrame.Parent = mainFrame
+-- Status
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Text = "🔴 PARADO"
+statusLabel.Size = UDim2.new(1, 0, 0.18, 0)
+statusLabel.Position = UDim2.new(0, 0, 0.18, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
+statusLabel.TextScaled = true
+statusLabel.Parent = mainFrame
 
-local contentFrame = Instance.new("Frame")
-contentFrame.Size = UDim2.new(1, 0, 0, 0)
-contentFrame.BackgroundTransparency = 1
-contentFrame.Parent = scrollFrame
+-- Info
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Text = "NPCs: 0 | Alvo: Nenhum"
+infoLabel.Size = UDim2.new(1, 0, 0.18, 0)
+infoLabel.Position = UDim2.new(0, 0, 0.36, 0)
+infoLabel.BackgroundTransparency = 1
+infoLabel.TextColor3 = Color3.new(0.8, 0.8, 1)
+infoLabel.TextScaled = true
+infoLabel.Parent = mainFrame
 
--- Função para adicionar item na lista
-local function addDebugItem(text, color, isHeader)
-    local itemCount = #contentFrame:GetChildren()
-    local itemFrame = Instance.new("Frame")
-    itemFrame.Size = UDim2.new(1, 0, 0, 30)
-    itemFrame.Position = UDim2.new(0, 0, 0, itemCount * 30)
-    itemFrame.BackgroundColor3 = itemCount % 2 == 0 and Color3.fromRGB(30, 30, 40) or Color3.fromRGB(25, 25, 35)
-    itemFrame.BorderSizePixel = 0
-    itemFrame.Parent = contentFrame
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -10, 1, 0)
-    label.Position = UDim2.new(0, 5, 0, 0)
-    label.Text = text
-    label.TextColor3 = color or Color3.new(1, 1, 1)
-    label.TextScaled = true
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.BackgroundTransparency = 1
-    label.Parent = itemFrame
-    
-    if isHeader then
-        itemFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        label.Font = Enum.Font.SourceSansBold
-    end
-    
-    contentFrame.Size = UDim2.new(1, 0, 0, (itemCount + 1) * 30)
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, (itemCount + 1) * 30)
+-- Botões
+local buttonFrame = Instance.new("Frame")
+buttonFrame.Size = UDim2.new(1, 0, 0.46, 0)
+buttonFrame.Position = UDim2.new(0, 0, 0.54, 0)
+buttonFrame.BackgroundTransparency = 1
+buttonFrame.Parent = mainFrame
+
+-- Botão Iniciar/Parar
+local toggleButton = Instance.new("TextButton")
+toggleButton.Text = "▶ INICIAR"
+toggleButton.Size = UDim2.new(0.48, 0, 0.9, 0)
+toggleButton.Position = UDim2.new(0.01, 0, 0.05, 0)
+toggleButton.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.TextScaled = true
+toggleButton.Parent = buttonFrame
+
+-- Botão Procurar NPCs
+local searchButton = Instance.new("TextButton")
+searchButton.Text = "🔍 ATUALIZAR"
+searchButton.Size = UDim2.new(0.48, 0, 0.9, 0)
+searchButton.Position = UDim2.new(0.51, 0, 0.05, 0)
+searchButton.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+searchButton.TextColor3 = Color3.new(1, 1, 1)
+searchButton.TextScaled = true
+searchButton.Parent = buttonFrame
+
+-- Função para teleportar instantaneamente
+local function teleportTo(position)
+    if not rootPart then return end
+    local lookAt = CFrame.new(position + Vector3.new(0, TELEPORT_OFFSET, 0), position)
+    rootPart.CFrame = lookAt
 end
 
--- Função para explorar toda a estrutura do Workspace
-local function exploreWorkspace()
-    addDebugItem("=== EXPLORANDO WORKSPACE ===", Color3.new(1, 0.5, 0), true)
+-- Função para encontrar NPCs Tennenman na estrutura correta
+local function findTennenmanNPCs()
+    tennenmanNPCs = {}
     
-    -- Listar todas as pastas principais
-    for _, child in pairs(Workspace:GetChildren()) do
-        addDebugItem("📁 " .. child.Name .. " (" .. child.ClassName .. ")", Color3.new(0.8, 0.8, 1))
+    print("🔍 Procurando Tennenman na estrutura: Maps → NPCs → tennenman")
+    
+    -- Procurar na estrutura correta: Maps → NPCs → tennenman
+    local mapsFolder = Workspace:FindFirstChild("Maps")
+    if not mapsFolder then
+        infoLabel.Text = "❌ Pasta Maps não encontrada"
+        print("❌ Pasta Maps não encontrada no Workspace")
+        return 0
+    end
+    
+    local npcsFolder = mapsFolder:FindFirstChild("NPCs")
+    if not npcsFolder then
+        infoLabel.Text = "❌ Pasta NPCs não encontrada"
+        print("❌ Pasta NPCs não encontrada em Maps")
+        return 0
+    end
+    
+    -- Procurar pelo model "tennenman" (com m minúsculo)
+    local tennenmanModel = npcsFolder:FindFirstChild("tennenman")
+    if not tennenmanModel then
+        infoLabel.Text = "❌ Model tennenman não encontrado"
+        print("❌ Model 'tennenman' não encontrado na pasta NPCs")
         
-        -- Explorar filhos das pastas importantes
-        if child:IsA("Folder") or child:IsA("Model") then
-            for _, grandChild in pairs(child:GetChildren()) do
-                addDebugItem("   ├── " .. grandChild.Name .. " (" .. grandChild.ClassName .. ")", Color3.new(0.6, 0.8, 1))
+        -- Listar o que tem na pasta NPCs para debug
+        print("📁 Conteúdo da pasta NPCs:")
+        for _, child in pairs(npcsFolder:GetChildren()) do
+            print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
+        end
+        return 0
+    end
+    
+    print("✅ Tennenman encontrado: " .. tennenmanModel.Name)
+    
+    -- Procurar por HumanoidRootPart no model tennenman
+    local rootPartTennenman = tennenmanModel:FindFirstChild("HumanoidRootPart")
+    if not rootPartTennenman then
+        infoLabel.Text = "❌ HumanoidRootPart não encontrado"
+        print("❌ HumanoidRootPart não encontrado no model tennenman")
+        
+        -- Listar o que tem no model tennenman para debug
+        print("📁 Conteúdo do model tennenman:")
+        for _, child in pairs(tennenmanModel:GetChildren()) do
+            print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
+        end
+        return 0
+    end
+    
+    -- Verificar se tem Humanoid
+    local humanoidTennenman = tennenmanModel:FindFirstChildOfClass("Humanoid")
+    if not humanoidTennenman then
+        infoLabel.Text = "❌ Humanoid não encontrado"
+        print("❌ Humanoid não encontrado no model tennenman")
+        return 0
+    end
+    
+    -- Calcular distância
+    local distance = (rootPartTennenman.Position - rootPart.Position).Magnitude
+    
+    if distance <= FARM_RANGE then
+        table.insert(tennenmanNPCs, {
+            Model = tennenmanModel,
+            RootPart = rootPartTennenman,
+            Humanoid = humanoidTennenman,
+            Position = rootPartTennenman.Position,
+            Distance = distance
+        })
+        
+        print("✅ Tennenman adicionado - Distância: " .. math.floor(distance) .. " | Saúde: " .. humanoidTennenman.Health)
+    else
+        print("📏 Tennenman muito longe: " .. math.floor(distance) .. " studs")
+    end
+    
+    infoLabel.Text = "NPCs: " .. #tennenmanNPCs .. " | Saúde: " .. (humanoidTennenman and humanoidTennenman.Health or 0)
+    return #tennenmanNPCs
+end
+
+-- Função para simular ataque
+local function performAttack()
+    -- Tecla E (PC)
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+        wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+    end)
+    
+    -- Botão Combat (Mobile)
+    pcall(function()
+        for _, gui in pairs(player.PlayerGui:GetDescendants()) do
+            if gui:IsA("TextButton") and (
+                string.find(gui.Name:lower(), "combat") or
+                string.find(gui.Name:lower(), "attack") or
+                gui.Name == "Combat" or
+                gui.Name == "Attack"
+            ) then
+                gui:FireEvent("MouseButton1Click")
+                break
+            end
+        end
+    end)
+end
+
+-- Função para verificar se o alvo ainda existe e está vivo
+local function isTargetValid(target)
+    if not target or not target.Model then return false end
+    if not target.Model.Parent then return false end
+    
+    local humanoid = target.Model:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return false end
+    
+    return true
+end
+
+-- Função principal de farm
+local function farmLoop()
+    while IS_FARMING do
+        if not character or not rootPart then
+            character = player.Character
+            if character then
+                rootPart = character:FindFirstChild("HumanoidRootPart")
+            end
+            wait(1)
+            continue
+        end
+        
+        -- Buscar NPCs
+        findTennenmanNPCs()
+        
+        if #tennenmanNPCs > 0 then
+            currentTarget = tennenmanNPCs[1]
+            
+            if isTargetValid(currentTarget) then
+                statusLabel.Text = "🟢 ATACANDO TENNENMAN"
+                statusLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
+                infoLabel.Text = "NPCs: " .. #tennenmanNPCs .. " | Saúde: " .. currentTarget.Humanoid.Health
                 
-                -- Procurar por NPCs, Tennenman, ou nomes similares
-                if string.find(grandChild.Name:lower(), "npc") or 
-                   string.find(grandChild.Name:lower(), "tennen") or
-                   string.find(grandChild.Name:lower(), "enemy") then
-                    addDebugItem("   │   🎯 POSSÍVEL NPC: " .. grandChild.Name, Color3.new(1, 1, 0))
-                    
-                    -- Explorar mais fundo
-                    for _, greatGrandChild in pairs(grandChild:GetChildren()) do
-                        addDebugItem("   │   ├── " .. greatGrandChild.Name .. " (" .. greatGrandChild.ClassName .. ")", Color3.new(0.8, 1, 0.8))
-                    end
-                end
+                -- Teleportar para perto do Tennenman
+                teleportTo(currentTarget.Position)
+                wait(0.1)
+                
+                -- Atacar
+                performAttack()
+                
+                -- Virar para o alvo
+                rootPart.CFrame = CFrame.new(rootPart.Position, currentTarget.Position)
+                
+                wait(ATTACK_DELAY)
+                
+            else
+                -- Tennenman morreu
+                statusLabel.Text = "🟡 TENNENMAN MORREU"
+                statusLabel.TextColor3 = Color3.new(1, 1, 0.5)
+                wait(2) -- Esperar respawn
             end
+            
+        else
+            statusLabel.Text = "🟡 PROCURANDO TENNENMAN..."
+            statusLabel.TextColor3 = Color3.new(1, 1, 0.5)
+            wait(1)
         end
-    end
-    
-    addDebugItem("", Color3.new(1, 1, 1))
-    addDebugItem("=== PROCURANDO POR TENNENMAN ESPECIFICAMENTE ===", Color3.new(1, 0.5, 0), true)
-    
-    -- Buscar por "Tennenman" em todo o Workspace
-    local tennenmanCount = 0
-    for _, descendant in pairs(Workspace:GetDescendants()) do
-        if string.find(descendant.Name:lower(), "tennen") then
-            tennenmanCount = tennenmanCount + 1
-            local path = getFullPath(descendant)
-            addDebugItem("🎯 TENNENMAN ENCONTRADO: " .. path, Color3.new(0, 1, 0))
-        end
-    end
-    
-    if tennenmanCount == 0 then
-        addDebugItem("❌ NENHUM TENNENMAN ENCONTRADO NO WORKSPACE", Color3.new(1, 0, 0))
         
-        -- Procurar por nomes alternativos
-        addDebugItem("", Color3.new(1, 1, 1))
-        addDebugItem("=== PROCURANDO POR NOMES ALTERNATIVOS ===", Color3.new(1, 0.5, 0), true)
-        
-        local alternativeNames = {"boss", "enemy", "npc", "mob", "villain", "opponent"}
-        for _, name in pairs(alternativeNames) do
-            local count = 0
-            for _, descendant in pairs(Workspace:GetDescendants()) do
-                if string.find(descendant.Name:lower(), name) and descendant:IsA("Model") then
-                    count = count + 1
-                    if count <= 5 then -- Limitar para não sobrecarregar
-                        addDebugItem("🤔 " .. name:upper() .. ": " .. getFullPath(descendant), Color3.new(1, 0.8, 0))
-                    end
-                end
-            end
-            if count > 0 then
-                addDebugItem("📊 Total de " .. name .. ": " .. count, Color3.new(0.8, 0.8, 1))
-            end
-        end
+        wait(0.1)
     end
-    
-    addDebugItem("", Color3.new(1, 1, 1))
-    addDebugItem("=== MODELOS COM HUMANOID (POSSÍVEIS INIMIGOS) ===", Color3.new(1, 0.5, 0), true)
-    
-    -- Listar todos os modelos com Humanoid (possíveis inimigos)
-    local humanoidCount = 0
-    for _, descendant in pairs(Workspace:GetDescendants()) do
-        if descendant:IsA("Model") and descendant:FindFirstChildOfClass("Humanoid") then
-            humanoidCount = humanoidCount + 1
-            if humanoidCount <= 10 then -- Limitar para não sobrecarregar
-                local humanoid = descendant:FindFirstChildOfClass("Humanoid")
-                addDebugItem("👤 " .. descendant.Name .. " (Health: " .. humanoid.Health .. ")", Color3.new(1, 1, 0.5))
-            end
-        end
-    end
-    addDebugItem("📊 Total de modelos com Humanoid: " .. humanoidCount, Color3.new(0.8, 0.8, 1))
 end
 
--- Função para obter o caminho completo de um objeto
-local function getFullPath(obj)
-    local path = obj.Name
-    local parent = obj.Parent
-    while parent and parent ~= Workspace do
-        path = parent.Name .. " → " .. path
-        parent = parent.Parent
-    end
-    return "Workspace → " .. path
-end
-
--- Botão para atualizar
-local refreshButton = Instance.new("TextButton")
-refreshButton.Text = "🔄 ATUALIZAR EXPLORAÇÃO"
-refreshButton.Size = UDim2.new(0.4, 0, 0.08, 0)
-refreshButton.Position = UDim2.new(0.3, 0, 0.92, 0)
-refreshButton.BackgroundColor3 = Color3.fromRGB(80, 160, 220)
-refreshButton.TextColor3 = Color3.new(1, 1, 1)
-refreshButton.TextScaled = true
-refreshButton.Parent = screenGui
-
-refreshButton.MouseButton1Click:Connect(function()
-    -- Limpar conteúdo anterior
-    for _, child in pairs(contentFrame:GetChildren()) do
-        child:Destroy()
-    end
-    contentFrame.Size = UDim2.new(1, 0, 0, 0)
+-- Conectar botões
+toggleButton.MouseButton1Click:Connect(function()
+    IS_FARMING = not IS_FARMING
     
-    -- Nova exploração
-    exploreWorkspace()
+    if IS_FARMING then
+        toggleButton.Text = "⏹ PARAR"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+        statusLabel.Text = "🟢 INICIANDO..."
+        statusLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
+        
+        -- Forçar atualização inicial
+        findTennenmanNPCs()
+        
+        -- Iniciar loop de farm
+        farmLoop()
+    else
+        toggleButton.Text = "▶ INICIAR"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+        statusLabel.Text = "🔴 PARADO"
+        statusLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
+        currentTarget = nil
+        tennenmanNPCs = {}
+    end
 end)
 
--- Iniciar exploração
-exploreWorkspace()
+searchButton.MouseButton1Click:Connect(function()
+    local count = findTennenmanNPCs()
+    statusLabel.Text = "🔍 ENCONTRADOS: " .. count
+    statusLabel.TextColor3 = Color3.new(0.8, 0.8, 1)
+    wait(2)
+    if not IS_FARMING then
+        statusLabel.Text = "🔴 PARADO"
+        statusLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
+    end
+end)
 
-print("🔍 Debug Explorer carregado!")
-print("Verifique a tela para ver a estrutura completa do jogo")
-print("Use o botão 🔄 para atualizar a exploração")
+-- Reconectar quando o personagem morrer
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    humanoid = character:WaitForChild("Humanoid")
+    rootPart = character:WaitForChild("HumanoidRootPart")
+    
+    if IS_FARMING then
+        wait(2)
+        farmLoop()
+    end
+end)
+
+-- Inicialização
+findTennenmanNPCs()
+
+print("🐉 Auto Farm Tennenman carregado!")
+print("Estrutura: Maps → NPCs → tennenman")
+print("▶ INICIAR - Começa o farm automático")
+print("🔍 ATUALIZAR - Atualiza lista de NPCs")
