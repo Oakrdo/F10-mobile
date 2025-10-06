@@ -1,540 +1,182 @@
 --[[
-    EXPLORER MOBILE PARA ROBLOX - VERSÃO CORRIGIDA
-    Funcionalidades:
-    ✅ Navegação completa da árvore do Workspace
-    ✅ Visualizar propriedades de objetos
-    ✅ Expandir/colapsar hierarquia
-    ✅ Interface mobile otimizada
+    EXPLORER MOBILE SIMPLES E FUNCIONAL
+    Versão corrigida - mostra tudo
 ]]
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local TextService = game:GetService("TextService")
-
--- Configurações
 local PLAYER = Players.LocalPlayer
-local screenGui = nil
-local isExplorerVisible = false
 
--- Variáveis
-local selectedObject = nil
-local expandedObjects = {}
+-- Criar a interface
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MobileExplorer"
+screenGui.Parent = PLAYER:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
 
--- Função para obter ícone do objeto
-local function GetObjectIcon(object)
-    local className = object.ClassName
-    
-    local icons = {
-        Folder = "📁",
-        Part = "🧱", 
-        MeshPart = "🔷",
-        Script = "📜",
-        LocalScript = "📜",
-        ModuleScript = "📦",
-        Sound = "🔊",
-        Model = "📦",
-        Camera = "📷",
-        Light = "💡",
-        Decal = "🖼️",
-        Texture = "🎨",
-        Humanoid = "👤",
-        HumanoidRootPart = "🎯",
-        Motor6D = "⚙️",
-        Fire = "🔥",
-        Smoke = "💨",
-        Sparkles = "✨",
-        ParticleEmitter = "🌟",
-        BillboardGui = "📺",
-        TextLabel = "🔤",
-        TextButton = "🔘",
-        Frame = "🟦",
-        ImageLabel = "🖼️"
-    }
-    
-    return icons[className] or "📄"
-end
+-- Botão para abrir/feichar
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 80, 0, 40)
+toggleButton.Position = UDim2.new(1, -90, 0, 10)
+toggleButton.AnchorPoint = Vector2.new(1, 0)
+toggleButton.Text = "📁 EXPLORER"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+toggleButton.BackgroundTransparency = 0.2
+toggleButton.TextSize = 14
+toggleButton.ZIndex = 10
+toggleButton.Parent = screenGui
 
--- Função para criar item da árvore
-local function CreateTreeItem(object, depth, parentFrame)
-    if not object or not parentFrame then return end
-    
+-- Frame principal
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0.9, 0, 0.8, 0)
+mainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.Visible = false
+mainFrame.ZIndex = 5
+mainFrame.Parent = screenGui
+
+-- Título
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Text = "EXPLORER - " .. game.Name
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+title.TextSize = 16
+title.Font = Enum.Font.SourceSansBold
+title.Parent = mainFrame
+
+-- Área de scroll
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(1, -10, 1, -50)
+scrollFrame.Position = UDim2.new(0, 5, 0, 45)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.ScrollBarThickness = 8
+scrollFrame.Parent = mainFrame
+
+-- Container dos itens
+local itemsContainer = Instance.new("Frame")
+itemsContainer.Size = UDim2.new(1, 0, 0, 0)
+itemsContainer.BackgroundTransparency = 1
+itemsContainer.Parent = scrollFrame
+
+-- Função para adicionar item
+local function AddItem(text, depth, object)
     local itemFrame = Instance.new("Frame")
     itemFrame.Size = UDim2.new(1, 0, 0, 25)
     itemFrame.BackgroundTransparency = 1
-    itemFrame.Name = "Item_" .. object.Name
     
-    local expandButton = Instance.new("TextButton")
-    expandButton.Size = UDim2.new(0, 20, 0, 20)
-    expandButton.Position = UDim2.new(0, depth * 15, 0, 2)
-    expandButton.Text = ""
-    expandButton.BackgroundTransparency = 1
-    expandButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-    expandButton.TextSize = 12
-    expandButton.Parent = itemFrame
+    local indent = Instance.new("TextLabel")
+    indent.Size = UDim2.new(0, depth * 20, 1, 0)
+    indent.Text = ""
+    indent.BackgroundTransparency = 1
+    indent.Parent = itemFrame
     
-    local iconLabel = Instance.new("TextLabel")
-    iconLabel.Size = UDim2.new(0, 20, 0, 20)
-    iconLabel.Position = UDim2.new(0, depth * 15 + 20, 0, 2)
-    iconLabel.Text = GetObjectIcon(object)
-    iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    iconLabel.BackgroundTransparency = 1
-    iconLabel.TextSize = 12
-    iconLabel.Parent = itemFrame
+    local icon = Instance.new("TextLabel")
+    icon.Size = UDim2.new(0, 25, 1, 0)
+    icon.Position = UDim2.new(0, depth * 20, 0, 0)
+    icon.Text = "📄"
+    icon.TextColor3 = Color3.fromRGB(255, 255, 255)
+    icon.BackgroundTransparency = 1
+    icon.TextSize = 14
+    icon.Parent = itemFrame
     
-    local nameLabel = Instance.new("TextButton")
-    nameLabel.Size = UDim2.new(1, - (depth * 15 + 45), 0, 20)
-    nameLabel.Position = UDim2.new(0, depth * 15 + 45, 0, 2)
-    nameLabel.Text = object.Name
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.TextSize = 11
-    nameLabel.Parent = itemFrame
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -(depth * 20 + 30), 1, 0)
+    label.Position = UDim2.new(0, depth * 20 + 25, 0, 0)
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.BackgroundTransparency = 1
+    label.TextSize = 12
+    label.Parent = itemFrame
     
-    -- Verificar se o objeto tem filhos
-    local hasChildren = #object:GetChildren() > 0
-    
-    if hasChildren then
-        if expandedObjects[object] then
-            expandButton.Text = "▼"
-        else
-            expandButton.Text = "▶"
-        end
-        expandButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-    else
-        expandButton.Text = "•"
-        expandButton.TextColor3 = Color3.fromRGB(100, 100, 100)
-    end
-    
-    -- Evento de expandir/colapsar
-    if hasChildren then
-        expandButton.MouseButton1Click:Connect(function()
-            expandedObjects[object] = not expandedObjects[object]
-            UpdateExplorerTree()
-        end)
-    end
-    
-    -- Evento de seleção
-    nameLabel.MouseButton1Click:Connect(function()
-        selectedObject = object
-        UpdatePropertiesPanel()
-        UpdateExplorerTree() -- Atualizar para destacar seleção
-    end)
-    
-    -- Destacar se selecionado
-    if selectedObject == object then
-        nameLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
-        itemFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-        itemFrame.BackgroundTransparency = 0.5
-    end
-    
-    itemFrame.Parent = parentFrame
-    
-    -- Adicionar filhos se expandido
-    if expandedObjects[object] and hasChildren then
-        for _, child in ipairs(object:GetChildren()) do
-            -- Filtrar alguns objetos para não poluir
-            if not child:IsA("Script") and 
-               not child:IsA("LocalScript") and
-               not string.find(child.Name, "Highlight") and
-               child ~= screenGui then
-                CreateTreeItem(child, depth + 1, parentFrame)
-            end
-        end
-    end
+    itemFrame.Parent = itemsContainer
     
     return itemFrame
 end
 
--- Função para atualizar a árvore do explorer
-local function UpdateExplorerTree()
-    if not screenGui then return end
-    
-    local explorerFrame = screenGui:FindFirstChild("ExplorerFrame")
-    if not explorerFrame then return end
-    
-    local treeScroll = explorerFrame:FindFirstChild("TreeScroll")
-    if not treeScroll then return end
-    
-    local treeContainer = treeScroll:FindFirstChild("TreeContainer")
-    if not treeContainer then return end
-    
-    -- Limpar árvore anterior
-    treeContainer:ClearAllChildren()
+-- Função para popular o explorer
+local function PopulateExplorer()
+    -- Limpar container
+    itemsContainer:ClearAllChildren()
     
     local yPosition = 0
     
-    -- Função para adicionar serviço
-    local function AddService(service, name)
-        local serviceFrame = Instance.new("Frame")
-        serviceFrame.Size = UDim2.new(1, 0, 0, 25)
-        serviceFrame.Position = UDim2.new(0, 0, 0, yPosition)
-        serviceFrame.BackgroundTransparency = 1
-        
-        local expandButton = Instance.new("TextButton")
-        expandButton.Size = UDim2.new(0, 20, 0, 20)
-        expandButton.Position = UDim2.new(0, 0, 0, 2)
-        expandButton.Text = expandedObjects[service] and "▼" or "▶"
-        expandButton.BackgroundTransparency = 1
-        expandButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-        expandButton.TextSize = 12
-        expandButton.Parent = serviceFrame
-        
-        local iconLabel = Instance.new("TextLabel")
-        iconLabel.Size = UDim2.new(0, 20, 0, 20)
-        iconLabel.Position = UDim2.new(0, 20, 0, 2)
-        iconLabel.Text = "📁"
-        iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        iconLabel.BackgroundTransparency = 1
-        iconLabel.TextSize = 12
-        iconLabel.Parent = serviceFrame
-        
-        local nameLabel = Instance.new("TextButton")
-        nameLabel.Size = UDim2.new(1, -45, 0, 20)
-        nameLabel.Position = UDim2.new(0, 45, 0, 2)
-        nameLabel.Text = name
-        nameLabel.TextColor3 = selectedObject == service and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(255, 255, 255)
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.TextSize = 12
-        nameLabel.Parent = serviceFrame
-        
-        -- Eventos
-        expandButton.MouseButton1Click:Connect(function()
-            expandedObjects[service] = not expandedObjects[service]
-            UpdateExplorerTree()
-        end)
-        
-        nameLabel.MouseButton1Click:Connect(function()
-            selectedObject = service
-            UpdatePropertiesPanel()
-            UpdateExplorerTree()
-        end)
-        
-        if selectedObject == service then
-            serviceFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
-            serviceFrame.BackgroundTransparency = 0.5
-        end
-        
-        serviceFrame.Parent = treeContainer
+    -- Adicionar Workspace
+    local workspaceItem = AddItem("Workspace (" .. #workspace:GetChildren() .. " objetos)", 0, workspace)
+    workspaceItem.Position = UDim2.new(0, 0, 0, yPosition)
+    yPosition = yPosition + 25
+    
+    -- Adicionar objetos do Workspace
+    for _, child in ipairs(workspace:GetChildren()) do
+        local childItem = AddItem(child.Name .. " (" .. child.ClassName .. ")", 1, child)
+        childItem.Position = UDim2.new(0, 0, 0, yPosition)
         yPosition = yPosition + 25
         
-        -- Adicionar filhos se expandido
-        if expandedObjects[service] then
-            for _, child in ipairs(service:GetChildren()) do
-                if not child:IsA("Script") and not child:IsA("LocalScript") then
-                    CreateTreeItem(child, 1, treeContainer)
-                    yPosition = yPosition + 25
-                end
-            end
+        -- Adicionar netos (2º nível)
+        for _, grandchild in ipairs(child:GetChildren()) do
+            local grandchildItem = AddItem(grandchild.Name .. " (" .. grandchild.ClassName .. ")", 2, grandchild)
+            grandchildItem.Position = UDim2.new(0, 0, 0, yPosition)
+            yPosition = yPosition + 25
         end
     end
     
-    -- Adicionar serviços principais
-    AddService(workspace, "Workspace")
-    AddService(game:GetService("Lighting"), "Lighting")
-    AddService(game:GetService("ReplicatedStorage"), "ReplicatedStorage")
+    -- Adicionar Lighting
+    local lightingItem = AddItem("Lighting (" .. #game.Lighting:GetChildren() .. " objetos)", 0, game.Lighting)
+    lightingItem.Position = UDim2.new(0, 0, 0, yPosition)
+    yPosition = yPosition + 25
     
-    -- Ajustar tamanho do container
-    treeContainer.Size = UDim2.new(1, 0, 0, yPosition)
-    treeScroll.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    -- Adicionar ReplicatedStorage
+    local replicatedItem = AddItem("ReplicatedStorage (" .. #game.ReplicatedStorage:GetChildren() .. " objetos)", 0, game.ReplicatedStorage)
+    replicatedItem.Position = UDim2.new(0, 0, 0, yPosition)
+    yPosition = yPosition + 25
+    
+    -- Ajustar tamanho do container e scroll
+    itemsContainer.Size = UDim2.new(1, 0, 0, yPosition)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPosition)
 end
 
--- Função para atualizar painel de propriedades
-local function UpdatePropertiesPanel()
-    if not screenGui then return end
-    
-    local explorerFrame = screenGui:FindFirstChild("ExplorerFrame")
-    if not explorerFrame then return end
-    
-    local propsScroll = explorerFrame:FindFirstChild("PropsScroll")
-    if not propsScroll then return end
-    
-    local propsContainer = propsScroll:FindFirstChild("PropsContainer")
-    if not propsContainer then return end
-    
-    -- Limpar propriedades anteriores
-    propsContainer:ClearAllChildren()
-    
-    if not selectedObject then
-        local noSelection = Instance.new("TextLabel")
-        noSelection.Size = UDim2.new(1, 0, 0, 50)
-        noSelection.Text = "Selecione um objeto na árvore"
-        noSelection.TextColor3 = Color3.fromRGB(150, 150, 150)
-        noSelection.BackgroundTransparency = 1
-        noSelection.TextSize = 14
-        noSelection.TextWrapped = true
-        noSelection.Parent = propsContainer
-        propsContainer.Size = UDim2.new(1, 0, 0, 50)
-        propsScroll.CanvasSize = UDim2.new(0, 0, 0, 50)
-        return
-    end
-    
-    local yOffset = 0
-    
-    -- Título das propriedades
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -10, 0, 40)
-    title.Position = UDim2.new(0, 5, 0, yOffset)
-    title.Text = selectedObject.Name .. " (" .. selectedObject.ClassName .. ")"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    title.TextSize = 14
-    title.Font = Enum.Font.SourceSansBold
-    title.TextWrapped = true
-    title.Parent = propsContainer
-    
-    yOffset = yOffset + 45
-    
-    -- Propriedades básicas
-    local basicProps = {
-        {"Nome", selectedObject.Name},
-        {"Classe", selectedObject.ClassName},
-        {"Arquivável", tostring(selectedObject.Archivable)}
-    }
-    
-    for _, prop in ipairs(basicProps) do
-        local propFrame = Instance.new("Frame")
-        propFrame.Size = UDim2.new(1, -10, 0, 20)
-        propFrame.Position = UDim2.new(0, 5, 0, yOffset)
-        propFrame.BackgroundTransparency = 1
-        propFrame.Parent = propsContainer
-        
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(0.4, 0, 1, 0)
-        nameLabel.Text = prop[1] .. ":"
-        nameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.TextSize = 12
-        nameLabel.Parent = propFrame
-        
-        local valueLabel = Instance.new("TextLabel")
-        valueLabel.Size = UDim2.new(0.6, 0, 1, 0)
-        valueLabel.Position = UDim2.new(0.4, 0, 0, 0)
-        valueLabel.Text = tostring(prop[2])
-        valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        valueLabel.TextXAlignment = Enum.TextXAlignment.Left
-        valueLabel.BackgroundTransparency = 1
-        valueLabel.TextSize = 12
-        valueLabel.Parent = propFrame
-        
-        yOffset = yOffset + 25
-    end
-    
-    -- Propriedades específicas
-    if selectedObject:IsA("BasePart") then
-        local partProps = {
-            {"Posição", string.format("(%.1f, %.1f, %.1f)", 
-                selectedObject.Position.X, selectedObject.Position.Y, selectedObject.Position.Z)},
-            {"Tamanho", string.format("(%.1f, %.1f, %.1f)", 
-                selectedObject.Size.X, selectedObject.Size.Y, selectedObject.Size.Z)},
-            {"Cor", string.format("(%.1f, %.1f, %.1f)", 
-                selectedObject.Color.R, selectedObject.Color.G, selectedObject.Color.B)},
-            {"Material", tostring(selectedObject.Material)}
-        }
-        
-        for _, prop in ipairs(partProps) do
-            local propFrame = Instance.new("Frame")
-            propFrame.Size = UDim2.new(1, -10, 0, 20)
-            propFrame.Position = UDim2.new(0, 5, 0, yOffset)
-            propFrame.BackgroundTransparency = 1
-            propFrame.Parent = propsContainer
-            
-            local nameLabel = Instance.new("TextLabel")
-            nameLabel.Size = UDim2.new(0.4, 0, 1, 0)
-            nameLabel.Text = prop[1] .. ":"
-            nameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-            nameLabel.BackgroundTransparency = 1
-            nameLabel.TextSize = 12
-            nameLabel.Parent = propFrame
-            
-            local valueLabel = Instance.new("TextLabel")
-            valueLabel.Size = UDim2.new(0.6, 0, 1, 0)
-            valueLabel.Position = UDim2.new(0.4, 0, 0, 0)
-            valueLabel.Text = prop[2]
-            valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            valueLabel.TextXAlignment = Enum.TextXAlignment.Left
-            valueLabel.BackgroundTransparency = 1
-            valueLabel.TextSize = 12
-            valueLabel.Parent = propFrame
-            
-            yOffset = yOffset + 25
-        end
-    end
-    
-    -- Ajustar tamanhos
-    propsContainer.Size = UDim2.new(1, 0, 0, yOffset + 10)
-    propsScroll.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10)
-end
+-- Botão de atualizar
+local refreshButton = Instance.new("TextButton")
+refreshButton.Size = UDim2.new(0, 100, 0, 30)
+refreshButton.Position = UDim2.new(0.5, -50, 1, -35)
+refreshButton.Text = "🔄 ATUALIZAR"
+refreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+refreshButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+refreshButton.TextSize = 12
+refreshButton.Parent = mainFrame
 
--- Função para criar a interface do explorer
-local function CreateExplorerUI()
-    if screenGui and screenGui.Parent then
-        screenGui:Destroy()
+-- Botão de fechar
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 100, 0, 30)
+closeButton.Position = UDim2.new(0.5, -50, 1, -70)
+closeButton.Text = "❌ FECHAR"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+closeButton.TextSize = 12
+closeButton.Parent = mainFrame
+
+-- Conexões dos botões
+toggleButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+    if mainFrame.Visible then
+        PopulateExplorer()
+        toggleButton.Text = "📁 ABERTO"
+    else
+        toggleButton.Text = "📁 EXPLORER"
     end
-    
-    screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "MobileExplorer"
-    screenGui.Parent = PLAYER:WaitForChild("PlayerGui")
-    screenGui.ResetOnSpawn = false
-    
-    -- Botão flutuante para abrir/fechar
-    local toggleButton = Instance.new("TextButton")
-    toggleButton.Name = "ToggleButton"
-    toggleButton.Size = UDim2.new(0, 60, 0, 40)
-    toggleButton.Position = UDim2.new(1, -70, 0, 60)
-    toggleButton.AnchorPoint = Vector2.new(1, 0)
-    toggleButton.Text = "📁 F10"
-    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    toggleButton.BackgroundTransparency = 0.3
-    toggleButton.TextSize = 14
-    toggleButton.ZIndex = 10
-    toggleButton.Parent = screenGui
-    
-    -- Frame principal do explorer
-    local explorerFrame = Instance.new("Frame")
-    explorerFrame.Name = "ExplorerFrame"
-    explorerFrame.Size = UDim2.new(0.95, 0, 0.85, 0)
-    explorerFrame.Position = UDim2.new(0.025, 0, 0.075, 0)
-    explorerFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    explorerFrame.BackgroundTransparency = 0.05
-    explorerFrame.Visible = false
-    explorerFrame.ZIndex = 5
-    explorerFrame.Parent = screenGui
-    
-    -- Barra de título
-    local titleBar = Instance.new("Frame")
-    titleBar.Name = "TitleBar"
-    titleBar.Size = UDim2.new(1, 0, 0, 35)
-    titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-    titleBar.BorderSizePixel = 0
-    titleBar.ZIndex = 6
-    titleBar.Parent = explorerFrame
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -100, 1, 0)
-    titleLabel.Position = UDim2.new(0, 10, 0, 0)
-    titleLabel.Text = "EXPLORER MOBILE"
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.TextSize = 16
-    titleLabel.Font = Enum.Font.SourceSansBold
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.ZIndex = 7
-    titleLabel.Parent = titleBar
-    
-    -- Botão de fechar
-    local closeButton = Instance.new("TextButton")
-    closeButton.Name = "CloseButton"
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -35, 0, 2)
-    closeButton.Text = "X"
-    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-    closeButton.TextSize = 14
-    closeButton.ZIndex = 7
-    closeButton.Parent = titleBar
-    
-    -- Botão de refresh
-    local refreshButton = Instance.new("TextButton")
-    refreshButton.Name = "RefreshButton"
-    refreshButton.Size = UDim2.new(0, 30, 0, 30)
-    refreshButton.Position = UDim2.new(1, -70, 0, 2)
-    refreshButton.Text = "🔄"
-    refreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    refreshButton.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
-    refreshButton.TextSize = 14
-    refreshButton.ZIndex = 7
-    refreshButton.Parent = titleBar
-    
-    -- Frame da árvore (esquerda)
-    local treeFrame = Instance.new("Frame")
-    treeFrame.Name = "TreeFrame"
-    treeFrame.Size = UDim2.new(0.5, -2, 1, -40)
-    treeFrame.Position = UDim2.new(0, 0, 0, 40)
-    treeFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    treeFrame.ZIndex = 6
-    treeFrame.Parent = explorerFrame
-    
-    local treeScroll = Instance.new("ScrollingFrame")
-    treeScroll.Name = "TreeScroll"
-    treeScroll.Size = UDim2.new(1, 0, 1, 0)
-    treeScroll.BackgroundTransparency = 1
-    treeScroll.ScrollBarThickness = 6
-    treeScroll.ZIndex = 6
-    treeScroll.Parent = treeFrame
-    
-    local treeContainer = Instance.new("Frame")
-    treeContainer.Name = "TreeContainer"
-    treeContainer.Size = UDim2.new(1, 0, 0, 0)
-    treeContainer.BackgroundTransparency = 1
-    treeContainer.ZIndex = 6
-    treeContainer.Parent = treeScroll
-    
-    -- Frame das propriedades (direita)
-    local propsFrame = Instance.new("Frame")
-    propsFrame.Name = "PropertiesFrame"
-    propsFrame.Size = UDim2.new(0.5, -2, 1, -40)
-    propsFrame.Position = UDim2.new(0.5, 2, 0, 40)
-    propsFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-    propsFrame.ZIndex = 6
-    propsFrame.Parent = explorerFrame
-    
-    local propsScroll = Instance.new("ScrollingFrame")
-    propsScroll.Name = "PropsScroll"
-    propsScroll.Size = UDim2.new(1, 0, 1, 0)
-    propsScroll.BackgroundTransparency = 1
-    propsScroll.ScrollBarThickness = 6
-    propsScroll.ZIndex = 6
-    propsScroll.Parent = propsFrame
-    
-    local propsContainer = Instance.new("Frame")
-    propsContainer.Name = "PropsContainer"
-    propsContainer.Size = UDim2.new(1, 0, 0, 0)
-    propsContainer.BackgroundTransparency = 1
-    propsContainer.ZIndex = 6
-    propsContainer.Parent = propsScroll
-    
-    -- Conexões dos botões
-    toggleButton.MouseButton1Click:Connect(function()
-        isExplorerVisible = not isExplorerVisible
-        explorerFrame.Visible = isExplorerVisible
-        
-        if isExplorerVisible then
-            UpdateExplorerTree()
-            toggleButton.Text = "📁 ON"
-        else
-            toggleButton.Text = "📁 F10"
-        end
-    end)
-    
-    closeButton.MouseButton1Click:Connect(function()
-        isExplorerVisible = false
-        explorerFrame.Visible = false
-        toggleButton.Text = "📁 F10"
-    end)
-    
-    refreshButton.MouseButton1Click:Connect(function()
-        UpdateExplorerTree()
-        if selectedObject then
-            UpdatePropertiesPanel()
-        end
-    end)
-    
-    return screenGui
-end
+end)
 
--- Inicialização
-CreateExplorerUI()
+refreshButton.MouseButton1Click:Connect(PopulateExplorer)
 
--- Expandir workspace por padrão
-expandedObjects[workspace] = true
-expandedObjects[game:GetService("Lighting")] = false
-expandedObjects[game:GetService("ReplicatedStorage")] = false
+closeButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = false
+    toggleButton.Text = "📁 EXPLORER"
+end)
 
-print("📁 Explorer Mobile ATIVADO!")
-print("Clique em '📁 F10' para abrir o explorer")
-print("Use ▶/▼ para expandir/colapsar a árvore")
+-- Popular inicialmente
+PopulateExplorer()
+
+print("🔍 Explorer Mobile carregado!")
+print("Clique em '📁 EXPLORER' para abrir")
+print("Encontrados: " .. #workspace:GetChildren() .. " objetos no Workspace")
