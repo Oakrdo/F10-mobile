@@ -1,10 +1,9 @@
 --[[
-    EXPLORER MOBILE PARA ROBLOX
+    EXPLORER MOBILE PARA ROBLOX - VERSÃO CORRIGIDA
     Funcionalidades:
     ✅ Navegação completa da árvore do Workspace
     ✅ Visualizar propriedades de objetos
     ✅ Expandir/colapsar hierarquia
-    ✅ Buscar objetos por nome
     ✅ Interface mobile otimizada
 ]]
 
@@ -20,49 +19,53 @@ local isExplorerVisible = false
 -- Variáveis
 local selectedObject = nil
 local expandedObjects = {}
-local objectIcons = {
-    Folder = "📁",
-    Part = "🧱", 
-    MeshPart = "🔷",
-    Script = "📜",
-    LocalScript = "📜",
-    ModuleScript = "📦",
-    Sound = "🔊",
-    Model = "📦",
-    Camera = "📷",
-    Light = "💡",
-    Decal = "🖼️",
-    Texture = "🎨",
-    Humanoid = "👤",
-    HumanoidRootPart = "🎯",
-    Motor6D = "⚙️",
-    Fire = "🔥",
-    Smoke = "💨",
-    Sparkles = "✨",
-    ParticleEmitter = "🌟"
-}
 
 -- Função para obter ícone do objeto
 local function GetObjectIcon(object)
     local className = object.ClassName
-    return objectIcons[className] or "📄"
+    
+    local icons = {
+        Folder = "📁",
+        Part = "🧱", 
+        MeshPart = "🔷",
+        Script = "📜",
+        LocalScript = "📜",
+        ModuleScript = "📦",
+        Sound = "🔊",
+        Model = "📦",
+        Camera = "📷",
+        Light = "💡",
+        Decal = "🖼️",
+        Texture = "🎨",
+        Humanoid = "👤",
+        HumanoidRootPart = "🎯",
+        Motor6D = "⚙️",
+        Fire = "🔥",
+        Smoke = "💨",
+        Sparkles = "✨",
+        ParticleEmitter = "🌟",
+        BillboardGui = "📺",
+        TextLabel = "🔤",
+        TextButton = "🔘",
+        Frame = "🟦",
+        ImageLabel = "🖼️"
+    }
+    
+    return icons[className] or "📄"
 end
 
 -- Função para criar item da árvore
 local function CreateTreeItem(object, depth, parentFrame)
+    if not object or not parentFrame then return end
+    
     local itemFrame = Instance.new("Frame")
     itemFrame.Size = UDim2.new(1, 0, 0, 25)
     itemFrame.BackgroundTransparency = 1
-    itemFrame.Name = object.Name
-    
-    local indent = Instance.new("Frame")
-    indent.Size = UDim2.new(0, depth * 20, 1, 0)
-    indent.BackgroundTransparency = 1
-    indent.Parent = itemFrame
+    itemFrame.Name = "Item_" .. object.Name
     
     local expandButton = Instance.new("TextButton")
     expandButton.Size = UDim2.new(0, 20, 0, 20)
-    expandButton.Position = UDim2.new(0, depth * 20, 0, 2)
+    expandButton.Position = UDim2.new(0, depth * 15, 0, 2)
     expandButton.Text = ""
     expandButton.BackgroundTransparency = 1
     expandButton.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -70,22 +73,22 @@ local function CreateTreeItem(object, depth, parentFrame)
     expandButton.Parent = itemFrame
     
     local iconLabel = Instance.new("TextLabel")
-    iconLabel.Size = UDim2.new(0, 25, 0, 20)
-    iconLabel.Position = UDim2.new(0, depth * 20 + 20, 0, 2)
+    iconLabel.Size = UDim2.new(0, 20, 0, 20)
+    iconLabel.Position = UDim2.new(0, depth * 15 + 20, 0, 2)
     iconLabel.Text = GetObjectIcon(object)
     iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     iconLabel.BackgroundTransparency = 1
-    iconLabel.TextSize = 14
+    iconLabel.TextSize = 12
     iconLabel.Parent = itemFrame
     
     local nameLabel = Instance.new("TextButton")
-    nameLabel.Size = UDim2.new(1, - (depth * 20 + 50), 0, 20)
-    nameLabel.Position = UDim2.new(0, depth * 20 + 45, 0, 2)
-    nameLabel.Text = object.Name .. " (" .. object.ClassName .. ")"
+    nameLabel.Size = UDim2.new(1, - (depth * 15 + 45), 0, 20)
+    nameLabel.Position = UDim2.new(0, depth * 15 + 45, 0, 2)
+    nameLabel.Text = object.Name
     nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.BackgroundTransparency = 1
-    nameLabel.TextSize = 12
+    nameLabel.TextSize = 11
     nameLabel.Parent = itemFrame
     
     -- Verificar se o objeto tem filhos
@@ -97,29 +100,32 @@ local function CreateTreeItem(object, depth, parentFrame)
         else
             expandButton.Text = "▶"
         end
+        expandButton.TextColor3 = Color3.fromRGB(200, 200, 200)
     else
         expandButton.Text = "•"
         expandButton.TextColor3 = Color3.fromRGB(100, 100, 100)
     end
     
     -- Evento de expandir/colapsar
-    expandButton.MouseButton1Click:Connect(function()
-        if hasChildren then
+    if hasChildren then
+        expandButton.MouseButton1Click:Connect(function()
             expandedObjects[object] = not expandedObjects[object]
             UpdateExplorerTree()
-        end
-    end)
+        end)
+    end
     
     -- Evento de seleção
     nameLabel.MouseButton1Click:Connect(function()
         selectedObject = object
         UpdatePropertiesPanel()
-        UpdateExplorerTree()
+        UpdateExplorerTree() -- Atualizar para destacar seleção
     end)
     
     -- Destacar se selecionado
     if selectedObject == object then
         nameLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
+        itemFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+        itemFrame.BackgroundTransparency = 0.5
     end
     
     itemFrame.Parent = parentFrame
@@ -127,11 +133,17 @@ local function CreateTreeItem(object, depth, parentFrame)
     -- Adicionar filhos se expandido
     if expandedObjects[object] and hasChildren then
         for _, child in ipairs(object:GetChildren()) do
-            if not string.find(child.Name, "WildHorseESP") and child ~= screenGui then
+            -- Filtrar alguns objetos para não poluir
+            if not child:IsA("Script") and 
+               not child:IsA("LocalScript") and
+               not string.find(child.Name, "Highlight") and
+               child ~= screenGui then
                 CreateTreeItem(child, depth + 1, parentFrame)
             end
         end
     end
+    
+    return itemFrame
 end
 
 -- Função para atualizar a árvore do explorer
@@ -141,34 +153,91 @@ local function UpdateExplorerTree()
     local explorerFrame = screenGui:FindFirstChild("ExplorerFrame")
     if not explorerFrame then return end
     
-    local treeFrame = explorerFrame:FindFirstChild("TreeFrame")
-    if not treeFrame then return end
+    local treeScroll = explorerFrame:FindFirstChild("TreeScroll")
+    if not treeScroll then return end
     
-    local treeContainer = treeFrame:FindFirstChild("TreeContainer")
+    local treeContainer = treeScroll:FindFirstChild("TreeContainer")
     if not treeContainer then return end
     
     -- Limpar árvore anterior
     treeContainer:ClearAllChildren()
     
-    -- Adicionar workspace
-    CreateTreeItem(workspace, 0, treeContainer)
+    local yPosition = 0
     
-    -- Adicionar outros serviços importantes
-    local services = {
-        game:GetService("Lighting"),
-        game:GetService("ReplicatedStorage"),
-        game:GetService("StarterPack"),
-        game:GetService("StarterGui"),
-        game:GetService("StarterPlayer")
-    }
-    
-    for _, service in ipairs(services) do
-        CreateTreeItem(service, 0, treeContainer)
+    -- Função para adicionar serviço
+    local function AddService(service, name)
+        local serviceFrame = Instance.new("Frame")
+        serviceFrame.Size = UDim2.new(1, 0, 0, 25)
+        serviceFrame.Position = UDim2.new(0, 0, 0, yPosition)
+        serviceFrame.BackgroundTransparency = 1
+        
+        local expandButton = Instance.new("TextButton")
+        expandButton.Size = UDim2.new(0, 20, 0, 20)
+        expandButton.Position = UDim2.new(0, 0, 0, 2)
+        expandButton.Text = expandedObjects[service] and "▼" or "▶"
+        expandButton.BackgroundTransparency = 1
+        expandButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+        expandButton.TextSize = 12
+        expandButton.Parent = serviceFrame
+        
+        local iconLabel = Instance.new("TextLabel")
+        iconLabel.Size = UDim2.new(0, 20, 0, 20)
+        iconLabel.Position = UDim2.new(0, 20, 0, 2)
+        iconLabel.Text = "📁"
+        iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        iconLabel.BackgroundTransparency = 1
+        iconLabel.TextSize = 12
+        iconLabel.Parent = serviceFrame
+        
+        local nameLabel = Instance.new("TextButton")
+        nameLabel.Size = UDim2.new(1, -45, 0, 20)
+        nameLabel.Position = UDim2.new(0, 45, 0, 2)
+        nameLabel.Text = name
+        nameLabel.TextColor3 = selectedObject == service and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(255, 255, 255)
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.TextSize = 12
+        nameLabel.Parent = serviceFrame
+        
+        -- Eventos
+        expandButton.MouseButton1Click:Connect(function()
+            expandedObjects[service] = not expandedObjects[service]
+            UpdateExplorerTree()
+        end)
+        
+        nameLabel.MouseButton1Click:Connect(function()
+            selectedObject = service
+            UpdatePropertiesPanel()
+            UpdateExplorerTree()
+        end)
+        
+        if selectedObject == service then
+            serviceFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+            serviceFrame.BackgroundTransparency = 0.5
+        end
+        
+        serviceFrame.Parent = treeContainer
+        yPosition = yPosition + 25
+        
+        -- Adicionar filhos se expandido
+        if expandedObjects[service] then
+            for _, child in ipairs(service:GetChildren()) do
+                if not child:IsA("Script") and not child:IsA("LocalScript") then
+                    CreateTreeItem(child, 1, treeContainer)
+                    yPosition = yPosition + 25
+                end
+            end
+        end
     end
     
+    -- Adicionar serviços principais
+    AddService(workspace, "Workspace")
+    AddService(game:GetService("Lighting"), "Lighting")
+    AddService(game:GetService("ReplicatedStorage"), "ReplicatedStorage")
+    
     -- Ajustar tamanho do container
-    local totalHeight = #treeContainer:GetChildren() * 25
-    treeContainer.Size = UDim2.new(1, 0, 0, totalHeight)
+    treeContainer.Size = UDim2.new(1, 0, 0, yPosition)
+    treeScroll.CanvasSize = UDim2.new(0, 0, 0, yPosition)
 end
 
 -- Função para atualizar painel de propriedades
@@ -178,10 +247,10 @@ local function UpdatePropertiesPanel()
     local explorerFrame = screenGui:FindFirstChild("ExplorerFrame")
     if not explorerFrame then return end
     
-    local propsFrame = explorerFrame:FindFirstChild("PropertiesFrame")
-    if not propsFrame then return end
+    local propsScroll = explorerFrame:FindFirstChild("PropsScroll")
+    if not propsScroll then return end
     
-    local propsContainer = propsFrame:FindFirstChild("PropsContainer")
+    local propsContainer = propsScroll:FindFirstChild("PropsContainer")
     if not propsContainer then return end
     
     -- Limpar propriedades anteriores
@@ -189,26 +258,33 @@ local function UpdatePropertiesPanel()
     
     if not selectedObject then
         local noSelection = Instance.new("TextLabel")
-        noSelection.Size = UDim2.new(1, 0, 1, 0)
-        noSelection.Text = "Nenhum objeto selecionado"
+        noSelection.Size = UDim2.new(1, 0, 0, 50)
+        noSelection.Text = "Selecione um objeto na árvore"
         noSelection.TextColor3 = Color3.fromRGB(150, 150, 150)
         noSelection.BackgroundTransparency = 1
         noSelection.TextSize = 14
+        noSelection.TextWrapped = true
         noSelection.Parent = propsContainer
+        propsContainer.Size = UDim2.new(1, 0, 0, 50)
+        propsScroll.CanvasSize = UDim2.new(0, 0, 0, 50)
         return
     end
     
+    local yOffset = 0
+    
     -- Título das propriedades
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Text = "Propriedades: " .. selectedObject.Name
+    title.Size = UDim2.new(1, -10, 0, 40)
+    title.Position = UDim2.new(0, 5, 0, yOffset)
+    title.Text = selectedObject.Name .. " (" .. selectedObject.ClassName .. ")"
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
     title.TextSize = 14
     title.Font = Enum.Font.SourceSansBold
+    title.TextWrapped = true
     title.Parent = propsContainer
     
-    local yOffset = 35
+    yOffset = yOffset + 45
     
     -- Propriedades básicas
     local basicProps = {
@@ -246,12 +322,15 @@ local function UpdatePropertiesPanel()
         yOffset = yOffset + 25
     end
     
-    -- Propriedades específicas por classe
+    -- Propriedades específicas
     if selectedObject:IsA("BasePart") then
         local partProps = {
-            {"Posição", tostring(selectedObject.Position)},
-            {"Tamanho", tostring(selectedObject.Size)},
-            {"Cor", tostring(selectedObject.Color)},
+            {"Posição", string.format("(%.1f, %.1f, %.1f)", 
+                selectedObject.Position.X, selectedObject.Position.Y, selectedObject.Position.Z)},
+            {"Tamanho", string.format("(%.1f, %.1f, %.1f)", 
+                selectedObject.Size.X, selectedObject.Size.Y, selectedObject.Size.Z)},
+            {"Cor", string.format("(%.1f, %.1f, %.1f)", 
+                selectedObject.Color.R, selectedObject.Color.G, selectedObject.Color.B)},
             {"Material", tostring(selectedObject.Material)}
         }
         
@@ -285,8 +364,9 @@ local function UpdatePropertiesPanel()
         end
     end
     
-    -- Ajustar tamanho do container
+    -- Ajustar tamanhos
     propsContainer.Size = UDim2.new(1, 0, 0, yOffset + 10)
+    propsScroll.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10)
 end
 
 -- Função para criar a interface do explorer
@@ -317,10 +397,10 @@ local function CreateExplorerUI()
     -- Frame principal do explorer
     local explorerFrame = Instance.new("Frame")
     explorerFrame.Name = "ExplorerFrame"
-    explorerFrame.Size = UDim2.new(0.9, 0, 0.8, 0)
-    explorerFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
+    explorerFrame.Size = UDim2.new(0.95, 0, 0.85, 0)
+    explorerFrame.Position = UDim2.new(0.025, 0, 0.075, 0)
     explorerFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    explorerFrame.BackgroundTransparency = 0.1
+    explorerFrame.BackgroundTransparency = 0.05
     explorerFrame.Visible = false
     explorerFrame.ZIndex = 5
     explorerFrame.Parent = screenGui
@@ -328,19 +408,19 @@ local function CreateExplorerUI()
     -- Barra de título
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
-    titleBar.Size = UDim2.new(1, 0, 0, 30)
+    titleBar.Size = UDim2.new(1, 0, 0, 35)
     titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
     titleBar.BorderSizePixel = 0
     titleBar.ZIndex = 6
     titleBar.Parent = explorerFrame
     
     local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -80, 1, 0)
-    titleLabel.Position = UDim2.new(0, 5, 0, 0)
-    titleLabel.Text = "EXPLORER (F10 Mobile)"
+    titleLabel.Size = UDim2.new(1, -100, 1, 0)
+    titleLabel.Position = UDim2.new(0, 10, 0, 0)
+    titleLabel.Text = "EXPLORER MOBILE"
     titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     titleLabel.BackgroundTransparency = 1
-    titleLabel.TextSize = 14
+    titleLabel.TextSize = 16
     titleLabel.Font = Enum.Font.SourceSansBold
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.ZIndex = 7
@@ -350,7 +430,7 @@ local function CreateExplorerUI()
     local closeButton = Instance.new("TextButton")
     closeButton.Name = "CloseButton"
     closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -35, 0, 0)
+    closeButton.Position = UDim2.new(1, -35, 0, 2)
     closeButton.Text = "X"
     closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
@@ -361,8 +441,8 @@ local function CreateExplorerUI()
     -- Botão de refresh
     local refreshButton = Instance.new("TextButton")
     refreshButton.Name = "RefreshButton"
-    refreshButton.Size = UDim2.new(0, 40, 0, 30)
-    refreshButton.Position = UDim2.new(1, -80, 0, 0)
+    refreshButton.Size = UDim2.new(0, 30, 0, 30)
+    refreshButton.Position = UDim2.new(1, -70, 0, 2)
     refreshButton.Text = "🔄"
     refreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     refreshButton.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
@@ -370,27 +450,20 @@ local function CreateExplorerUI()
     refreshButton.ZIndex = 7
     refreshButton.Parent = titleBar
     
-    -- Divisão entre árvore e propriedades
-    local splitter = Instance.new("Frame")
-    splitter.Size = UDim2.new(1, 0, 0, 5)
-    splitter.Position = UDim2.new(0, 0, 0, 30)
-    splitter.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    splitter.ZIndex = 6
-    splitter.Parent = explorerFrame
-    
     -- Frame da árvore (esquerda)
     local treeFrame = Instance.new("Frame")
     treeFrame.Name = "TreeFrame"
-    treeFrame.Size = UDim2.new(0.5, -2, 1, -35)
-    treeFrame.Position = UDim2.new(0, 0, 0, 35)
+    treeFrame.Size = UDim2.new(0.5, -2, 1, -40)
+    treeFrame.Position = UDim2.new(0, 0, 0, 40)
     treeFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     treeFrame.ZIndex = 6
     treeFrame.Parent = explorerFrame
     
     local treeScroll = Instance.new("ScrollingFrame")
+    treeScroll.Name = "TreeScroll"
     treeScroll.Size = UDim2.new(1, 0, 1, 0)
     treeScroll.BackgroundTransparency = 1
-    treeScroll.ScrollBarThickness = 8
+    treeScroll.ScrollBarThickness = 6
     treeScroll.ZIndex = 6
     treeScroll.Parent = treeFrame
     
@@ -404,16 +477,17 @@ local function CreateExplorerUI()
     -- Frame das propriedades (direita)
     local propsFrame = Instance.new("Frame")
     propsFrame.Name = "PropertiesFrame"
-    propsFrame.Size = UDim2.new(0.5, -2, 1, -35)
-    propsFrame.Position = UDim2.new(0.5, 2, 0, 35)
+    propsFrame.Size = UDim2.new(0.5, -2, 1, -40)
+    propsFrame.Position = UDim2.new(0.5, 2, 0, 40)
     propsFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
     propsFrame.ZIndex = 6
     propsFrame.Parent = explorerFrame
     
     local propsScroll = Instance.new("ScrollingFrame")
+    propsScroll.Name = "PropsScroll"
     propsScroll.Size = UDim2.new(1, 0, 1, 0)
     propsScroll.BackgroundTransparency = 1
-    propsScroll.ScrollBarThickness = 8
+    propsScroll.ScrollBarThickness = 6
     propsScroll.ZIndex = 6
     propsScroll.Parent = propsFrame
     
@@ -458,7 +532,9 @@ CreateExplorerUI()
 
 -- Expandir workspace por padrão
 expandedObjects[workspace] = true
+expandedObjects[game:GetService("Lighting")] = false
+expandedObjects[game:GetService("ReplicatedStorage")] = false
 
-print("📁 Explorer Mobile ativado!")
+print("📁 Explorer Mobile ATIVADO!")
 print("Clique em '📁 F10' para abrir o explorer")
 print("Use ▶/▼ para expandir/colapsar a árvore")
