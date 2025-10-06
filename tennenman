@@ -1,6 +1,6 @@
--- Auto Farm Tennenman com Teleport Próximo - Dragon Ball Rage
+-- Auto Farm Tennenman, Goku e Carl com Teleport Próximo - Dragon Ball Rage
 -- Por: DeepSeek-R1
--- CORREÇÕES APLICADAS: Sistema de ataque melhorado, detecção de NPCs e teleporte
+-- CORREÇÕES APLICADAS: Sistema de ataque apenas com E e farm para múltiplos NPCs
 
 wait(2)
 
@@ -23,17 +23,24 @@ local ATTACK_RANGE = 3
 local TELEPORT_OFFSET = 2
 local IS_FARMING = false
 local currentTarget = nil
-local tennenmanNPCs = {}
+local targetNPCs = {}
+
+-- NPCs para farmar
+local NPC_TARGETS = {
+    "Tennenman",
+    "Goku", 
+    "Carl"
+}
 
 -- Criar GUI
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TennenmanFarm"
+screenGui.Name = "AutoFarmDBR"
 screenGui.Parent = player:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
 
 -- Frame principal
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0.5, 0, 0.22, 0)
+mainFrame.Size = UDim2.new(0.5, 0, 0.25, 0)
 mainFrame.Position = UDim2.new(0.05, 0, 0.7, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(40, 30, 30)
 mainFrame.BackgroundTransparency = 0.2
@@ -42,8 +49,8 @@ mainFrame.Parent = screenGui
 
 -- Título
 local title = Instance.new("TextLabel")
-title.Text = "🐉 AUTO FARM TENNENMAN"
-title.Size = UDim2.new(1, 0, 0.18, 0)
+title.Text = "🐉 AUTO FARM DBR - TENNENMAN/GOKU/CARL"
+title.Size = UDim2.new(1, 0, 0.15, 0)
 title.BackgroundTransparency = 1
 title.TextColor3 = Color3.new(1, 1, 1)
 title.TextScaled = true
@@ -53,8 +60,8 @@ title.Parent = mainFrame
 -- Status
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Text = "🔴 PARADO"
-statusLabel.Size = UDim2.new(1, 0, 0.18, 0)
-statusLabel.Position = UDim2.new(0, 0, 0.18, 0)
+statusLabel.Size = UDim2.new(1, 0, 0.15, 0)
+statusLabel.Position = UDim2.new(0, 0, 0.15, 0)
 statusLabel.BackgroundTransparency = 1
 statusLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
 statusLabel.TextScaled = true
@@ -63,17 +70,27 @@ statusLabel.Parent = mainFrame
 -- Info
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Text = "NPCs: 0 | Alvo: Nenhum"
-infoLabel.Size = UDim2.new(1, 0, 0.18, 0)
-infoLabel.Position = UDim2.new(0, 0, 0.36, 0)
+infoLabel.Size = UDim2.new(1, 0, 0.15, 0)
+infoLabel.Position = UDim2.new(0, 0, 0.3, 0)
 infoLabel.BackgroundTransparency = 1
 infoLabel.TextColor3 = Color3.new(0.8, 0.8, 1)
 infoLabel.TextScaled = true
 infoLabel.Parent = mainFrame
 
+-- NPC Info
+local npcInfoLabel = Instance.new("TextLabel")
+npcInfoLabel.Text = "🎯: Tennenman | Goku | Carl"
+npcInfoLabel.Size = UDim2.new(1, 0, 0.15, 0)
+npcInfoLabel.Position = UDim2.new(0, 0, 0.45, 0)
+npcInfoLabel.BackgroundTransparency = 1
+npcInfoLabel.TextColor3 = Color3.new(1, 1, 0.5)
+npcInfoLabel.TextScaled = true
+npcInfoLabel.Parent = mainFrame
+
 -- Botões
 local buttonFrame = Instance.new("Frame")
-buttonFrame.Size = UDim2.new(1, 0, 0.46, 0)
-buttonFrame.Position = UDim2.new(0, 0, 0.54, 0)
+buttonFrame.Size = UDim2.new(1, 0, 0.4, 0)
+buttonFrame.Position = UDim2.new(0, 0, 0.6, 0)
 buttonFrame.BackgroundTransparency = 1
 buttonFrame.Parent = mainFrame
 
@@ -108,16 +125,16 @@ local function updateCharacterReferences()
     return false
 end
 
--- Função melhorada para encontrar NPCs Tennenman
-local function findTennenmanNPCs()
-    tennenmanNPCs = {}
+-- Função melhorada para encontrar TODOS os NPCs alvo
+local function findTargetNPCs()
+    targetNPCs = {}
     
     if not updateCharacterReferences() then
         infoLabel.Text = "❌ Personagem não carregado"
         return 0
     end
     
-    -- Procurar Tennenman em várias localizações possíveis
+    -- Procurar em várias localizações possíveis
     local possibleLocations = {
         Workspace:FindFirstChild("Map"),
         Workspace:FindFirstChild("NPCs"),
@@ -127,23 +144,26 @@ local function findTennenmanNPCs()
     
     for _, location in pairs(possibleLocations) do
         if location then
-            -- Procurar por modelos que contenham "Tennenman" no nome
-            for _, obj in pairs(location:GetDescendants()) do
-                if obj:IsA("Model") and string.find(string.lower(obj.Name), "tennenman") then
-                    local rootPartNPC = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
-                    local humanoidNPC = obj:FindFirstChildOfClass("Humanoid")
-                    
-                    if rootPartNPC and humanoidNPC and humanoidNPC.Health > 0 then
-                        local distance = (rootPartNPC.Position - rootPart.Position).Magnitude
+            -- Procurar por todos os NPCs alvo
+            for _, npcName in pairs(NPC_TARGETS) do
+                for _, obj in pairs(location:GetDescendants()) do
+                    if obj:IsA("Model") and string.lower(obj.Name) == string.lower(npcName) then
+                        local rootPartNPC = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
+                        local humanoidNPC = obj:FindFirstChildOfClass("Humanoid")
                         
-                        if distance <= FARM_RANGE then
-                            table.insert(tennenmanNPCs, {
-                                Model = obj,
-                                RootPart = rootPartNPC,
-                                Humanoid = humanoidNPC,
-                                Position = rootPartNPC.Position,
-                                Distance = distance
-                            })
+                        if rootPartNPC and humanoidNPC and humanoidNPC.Health > 0 then
+                            local distance = (rootPartNPC.Position - rootPart.Position).Magnitude
+                            
+                            if distance <= FARM_RANGE then
+                                table.insert(targetNPCs, {
+                                    Model = obj,
+                                    RootPart = rootPartNPC,
+                                    Humanoid = humanoidNPC,
+                                    Position = rootPartNPC.Position,
+                                    Distance = distance,
+                                    Name = obj.Name
+                                })
+                            end
                         end
                     end
                 end
@@ -152,16 +172,20 @@ local function findTennenmanNPCs()
     end
     
     -- Ordenar por distância (mais próximo primeiro)
-    table.sort(tennenmanNPCs, function(a, b)
+    table.sort(targetNPCs, function(a, b)
         return a.Distance < b.Distance
     end)
     
-    local count = #tennenmanNPCs
-    infoLabel.Text = "NPCs: " .. count .. " | " .. (count > 0 and ("Dist: " .. math.floor(tennenmanNPCs[1].Distance)) or "Nenhum encontrado")
+    local count = #targetNPCs
+    if count > 0 then
+        infoLabel.Text = "NPCs: " .. count .. " | " .. targetNPCs[1].Name .. " | Dist: " .. math.floor(targetNPCs[1].Distance)
+    else
+        infoLabel.Text = "NPCs: 0 | Nenhum encontrado"
+    end
     return count
 end
 
--- Função melhorada para teleportar
+-- Função para teleportar
 local function teleportCloseToNPC(targetPosition, targetRootPart)
     if not rootPart or not targetRootPart then 
         if not updateCharacterReferences() then return false end
@@ -187,57 +211,13 @@ local function teleportCloseToNPC(targetPosition, targetRootPart)
     return true
 end
 
--- Sistema de ataque MELHORADO
-local function performAdvancedAttack()
-    -- Tentar múltiplos métodos de ataque
-    
-    -- Método 1: Teclas virtuais
+-- Sistema de ataque APENAS com E
+local function performAttack()
+    -- Apenas tecla E (ataque rápido e contínuo)
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-        wait(0.05)
+        wait(0.03)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-    end)
-    
-    -- Método 2: Tecla F (comum em muitos jogos)
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
-        wait(0.05)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
-    end)
-    
-    -- Método 3: Tecla Q
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
-        wait(0.05)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
-    end)
-    
-    -- Método 4: Clique do mouse (ataque básico)
-    pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-        wait(0.05)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-    end)
-    
-    -- Método 5: Procurar e clicar em botões de ataque na GUI
-    pcall(function()
-        for _, gui in pairs(player.PlayerGui:GetDescendants()) do
-            if gui:IsA("TextButton") and (
-                string.find(string.lower(gui.Name), "combat") or
-                string.find(string.lower(gui.Name), "attack") or
-                string.find(string.lower(gui.Name), "fight") or
-                string.find(string.lower(gui.Text), "attack") or
-                gui.Name == "Combat" or gui.Name == "Attack" or gui.Name == "Fight"
-            ) then
-                -- Simular clique
-                if gui:FindFirstChild("Activate") then
-                    gui.Activate:Fire()
-                else
-                    gui:FireEvent("MouseButton1Click")
-                end
-                break
-            end
-        end
     end)
 end
 
@@ -255,7 +235,7 @@ local function isTargetValid(target)
     return true
 end
 
--- Loop principal de farm CORRIGIDO
+-- Loop principal de farm
 local function farmLoop()
     while IS_FARMING do
         if not updateCharacterReferences() then
@@ -264,26 +244,26 @@ local function farmLoop()
             continue
         end
         
-        local found = findTennenmanNPCs()
+        local found = findTargetNPCs()
         
         if found > 0 then
-            currentTarget = tennenmanNPCs[1]
+            currentTarget = targetNPCs[1]
             
             if isTargetValid(currentTarget) then
-                statusLabel.Text = "🟢 ATACANDO TENNENMAN"
+                statusLabel.Text = "🟢 ATACANDO " .. currentTarget.Name:upper()
                 statusLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
-                infoLabel.Text = "NPCs: " .. found .. " | Saúde: " .. math.floor(currentTarget.Humanoid.Health) .. " | Dist: " .. math.floor(currentTarget.Distance)
+                infoLabel.Text = "NPCs: " .. found .. " | " .. currentTarget.Name .. " | Saúde: " .. math.floor(currentTarget.Humanoid.Health)
                 
                 -- Teleportar para perto do NPC
                 local teleportSuccess = teleportCloseToNPC(currentTarget.Position, currentTarget.RootPart)
                 
                 if teleportSuccess then
-                    -- Spam de ataques MUITO rápido
-                    for i = 1, 8 do
+                    -- Spam de ataques RÁPIDOS apenas com E
+                    for i = 1, 10 do  -- 10 ataques rápidos por ciclo
                         if not IS_FARMING then break end
                         if not isTargetValid(currentTarget) then break end
                         
-                        performAdvancedAttack()
+                        performAttack()
                         
                         -- Virar para o alvo continuamente
                         if rootPart and currentTarget.RootPart then
@@ -298,14 +278,14 @@ local function farmLoop()
                 end
                 
             else
-                statusLabel.Text = "🟡 TENNENMAN MORTO/MORRENDO"
+                statusLabel.Text = "🟡 " .. currentTarget.Name:upper() .. " MORTO"
                 statusLabel.TextColor3 = Color3.new(1, 1, 0.5)
-                tennenmanNPCs = {}
+                targetNPCs = {}
                 wait(0.5)
             end
             
         else
-            statusLabel.Text = "🟡 PROCURANDO TENNENMAN..."
+            statusLabel.Text = "🟡 PROCURANDO NPCs..."
             statusLabel.TextColor3 = Color3.new(1, 1, 0.5)
             wait(0.5)
         end
@@ -337,7 +317,7 @@ toggleButton.MouseButton1Click:Connect(function()
 end)
 
 searchButton.MouseButton1Click:Connect(function()
-    local count = findTennenmanNPCs()
+    local count = findTargetNPCs()
     statusLabel.Text = "🔍 NPCs ENCONTRADOS: " .. count
     statusLabel.TextColor3 = Color3.new(0.8, 0.8, 1)
     wait(1.5)
@@ -359,20 +339,11 @@ player.CharacterAdded:Connect(function(newChar)
     end
 end)
 
--- Proteção contra errors
-local function safeFarm()
-    pcall(function()
-        if IS_FARMING then
-            farmLoop()
-        end
-    end)
-end
-
 -- Inicialização
-print("🐉 Auto Farm Tennenman - SISTEMA CORRIGIDO!")
+print("🐉 Auto Farm DBR - TENNENMAN, GOKU E CARL!")
 print("🎯 Teleporta a 3 studs de distância")
-print("⚡ Sistema de ataque MULTI-MÉTODO")
-print("🔍 Busca inteligente por NPCs")
+print("⚡ Ataque RÁPIDO apenas com tecla E")
+print("🔍 Buscando: Tennenman, Goku e Carl")
 
 -- Primeira busca
-findTennenmanNPCs()
+findTargetNPCs()
