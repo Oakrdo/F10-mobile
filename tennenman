@@ -1,6 +1,5 @@
--- Auto Farm Tennenman, Goku e Carl com Teleport Próximo - Dragon Ball Rage
+-- Auto Farm Tennenman, Goku e Carl com Teleport Próximo + ESP Esferas do Dragão
 -- Por: DeepSeek-R1
--- CORREÇÕES APLICADAS: Sistema de ataque apenas com E e farm para múltiplos NPCs
 
 wait(2)
 
@@ -22,8 +21,11 @@ local FARM_RANGE = 500
 local ATTACK_RANGE = 3
 local TELEPORT_OFFSET = 2
 local IS_FARMING = false
+local IS_ESP_ACTIVE = false
 local currentTarget = nil
 local targetNPCs = {}
+local dragonBalls = {}
+local espHandles = {}
 
 -- NPCs para farmar
 local NPC_TARGETS = {
@@ -40,8 +42,8 @@ screenGui.ResetOnSpawn = false
 
 -- Frame principal
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0.5, 0, 0.25, 0)
-mainFrame.Position = UDim2.new(0.05, 0, 0.7, 0)
+mainFrame.Size = UDim2.new(0.5, 0, 0.3, 0)
+mainFrame.Position = UDim2.new(0.05, 0, 0.65, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(40, 30, 30)
 mainFrame.BackgroundTransparency = 0.2
 mainFrame.BorderSizePixel = 0
@@ -49,8 +51,8 @@ mainFrame.Parent = screenGui
 
 -- Título
 local title = Instance.new("TextLabel")
-title.Text = "🐉 AUTO FARM DBR - TENNENMAN/GOKU/CARL"
-title.Size = UDim2.new(1, 0, 0.15, 0)
+title.Text = "🐉 AUTO FARM DBR + ESP ESFERAS"
+title.Size = UDim2.new(1, 0, 0.12, 0)
 title.BackgroundTransparency = 1
 title.TextColor3 = Color3.new(1, 1, 1)
 title.TextScaled = true
@@ -60,8 +62,8 @@ title.Parent = mainFrame
 -- Status
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Text = "🔴 PARADO"
-statusLabel.Size = UDim2.new(1, 0, 0.15, 0)
-statusLabel.Position = UDim2.new(0, 0, 0.15, 0)
+statusLabel.Size = UDim2.new(1, 0, 0.12, 0)
+statusLabel.Position = UDim2.new(0, 0, 0.12, 0)
 statusLabel.BackgroundTransparency = 1
 statusLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
 statusLabel.TextScaled = true
@@ -70,20 +72,30 @@ statusLabel.Parent = mainFrame
 -- Info
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Text = "NPCs: 0 | Alvo: Nenhum"
-infoLabel.Size = UDim2.new(1, 0, 0.15, 0)
-infoLabel.Position = UDim2.new(0, 0, 0.3, 0)
+infoLabel.Size = UDim2.new(1, 0, 0.12, 0)
+infoLabel.Position = UDim2.new(0, 0, 0.24, 0)
 infoLabel.BackgroundTransparency = 1
 infoLabel.TextColor3 = Color3.new(0.8, 0.8, 1)
 infoLabel.TextScaled = true
 infoLabel.Parent = mainFrame
 
+-- ESP Info
+local espInfoLabel = Instance.new("TextLabel")
+espInfoLabel.Text = "🌟 Esferas: 0"
+espInfoLabel.Size = UDim2.new(1, 0, 0.12, 0)
+espInfoLabel.Position = UDim2.new(0, 0, 0.36, 0)
+espInfoLabel.BackgroundTransparency = 1
+espInfoLabel.TextColor3 = Color3.new(1, 1, 0.5)
+espInfoLabel.TextScaled = true
+espInfoLabel.Parent = mainFrame
+
 -- NPC Info
 local npcInfoLabel = Instance.new("TextLabel")
 npcInfoLabel.Text = "🎯: Tennenman | Goku | Carl"
-npcInfoLabel.Size = UDim2.new(1, 0, 0.15, 0)
-npcInfoLabel.Position = UDim2.new(0, 0, 0.45, 0)
+npcInfoLabel.Size = UDim2.new(1, 0, 0.12, 0)
+npcInfoLabel.Position = UDim2.new(0, 0, 0.48, 0)
 npcInfoLabel.BackgroundTransparency = 1
-npcInfoLabel.TextColor3 = Color3.new(1, 1, 0.5)
+npcInfoLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
 npcInfoLabel.TextScaled = true
 npcInfoLabel.Parent = mainFrame
 
@@ -94,10 +106,10 @@ buttonFrame.Position = UDim2.new(0, 0, 0.6, 0)
 buttonFrame.BackgroundTransparency = 1
 buttonFrame.Parent = mainFrame
 
--- Botão Iniciar/Parar
+-- Botão Iniciar/Parar Farm
 local toggleButton = Instance.new("TextButton")
-toggleButton.Text = "▶ INICIAR"
-toggleButton.Size = UDim2.new(0.48, 0, 0.9, 0)
+toggleButton.Text = "▶ INICIAR FARM"
+toggleButton.Size = UDim2.new(0.48, 0, 0.4, 0)
 toggleButton.Position = UDim2.new(0.01, 0, 0.05, 0)
 toggleButton.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
 toggleButton.TextColor3 = Color3.new(1, 1, 1)
@@ -107,12 +119,32 @@ toggleButton.Parent = buttonFrame
 -- Botão Procurar NPCs
 local searchButton = Instance.new("TextButton")
 searchButton.Text = "🔍 ATUALIZAR"
-searchButton.Size = UDim2.new(0.48, 0, 0.9, 0)
+searchButton.Size = UDim2.new(0.48, 0, 0.4, 0)
 searchButton.Position = UDim2.new(0.51, 0, 0.05, 0)
 searchButton.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
 searchButton.TextColor3 = Color3.new(1, 1, 1)
 searchButton.TextScaled = true
 searchButton.Parent = buttonFrame
+
+-- Botão ESP Esferas
+local espButton = Instance.new("TextButton")
+espButton.Text = "🌟 LIGAR ESP"
+espButton.Size = UDim2.new(0.48, 0, 0.4, 0)
+espButton.Position = UDim2.new(0.01, 0, 0.55, 0)
+espButton.BackgroundColor3 = Color3.fromRGB(180, 80, 180)
+espButton.TextColor3 = Color3.new(1, 1, 1)
+espButton.TextScaled = true
+espButton.Parent = buttonFrame
+
+-- Botão Coletar Esferas
+local collectButton = Instance.new("TextButton")
+collectButton.Text = "💎 COLETAR ESFERAS"
+collectButton.Size = UDim2.new(0.48, 0, 0.4, 0)
+collectButton.Position = UDim2.new(0.51, 0, 0.55, 0)
+collectButton.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+collectButton.TextColor3 = Color3.new(0, 0, 0)
+collectButton.TextScaled = true
+collectButton.Parent = buttonFrame
 
 -- Função para atualizar referências do personagem
 local function updateCharacterReferences()
@@ -125,7 +157,176 @@ local function updateCharacterReferences()
     return false
 end
 
--- Função melhorada para encontrar TODOS os NPCs alvo
+-- Função para verificar se é uma Esfera do Dragão
+local function isDragonBall(model)
+    -- Verifica se o nome começa com { e termina com } (GUID)
+    local name = tostring(model.Name)
+    if string.sub(name, 1, 1) == "{" and string.sub(name, -1) == "}" then
+        -- Verifica se tem aparência de esfera (partes redondas, brilho, etc)
+        for _, child in pairs(model:GetChildren()) do
+            if child:IsA("Part") then
+                if child.Shape == Enum.PartType.Ball or child.Name:lower():find("sphere") or child.Name:lower():find("ball") then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- Função para criar ESP de uma Esfera do Dragão
+local function createDragonBallESP(dragonBall)
+    if espHandles[dragonBall] then return end
+    
+    local rootPart = dragonBall:FindFirstChild("HumanoidRootPart") or dragonBall:FindFirstChild("Head") or dragonBall:FindFirstChild("Torso")
+    if not rootPart then return end
+    
+    -- BillboardGui para texto flutuante
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "DragonBallESP"
+    billboard.Adornee = rootPart
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = rootPart
+    
+    -- Texto da esfera
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Text = "🌟 ESFERA DO DRAGÃO"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = Color3.new(1, 1, 0)
+    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextScaled = true
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.Parent = billboard
+    
+    -- Highlight para brilho
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "DragonBallHighlight"
+    highlight.Adornee = dragonBall
+    highlight.FillColor = Color3.new(1, 1, 0)
+    highlight.OutlineColor = Color3.new(1, 0.5, 0)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.Parent = dragonBall
+    
+    espHandles[dragonBall] = {
+        Billboard = billboard,
+        Highlight = highlight
+    }
+end
+
+-- Função para remover ESP de uma Esfera
+local function removeDragonBallESP(dragonBall)
+    if espHandles[dragonBall] then
+        if espHandles[dragonBall].Billboard then
+            espHandles[dragonBall].Billboard:Destroy()
+        end
+        if espHandles[dragonBall].Highlight then
+            espHandles[dragonBall].Highlight:Destroy()
+        end
+        espHandles[dragonBall] = nil
+    end
+end
+
+-- Função para limpar todos os ESPs
+local function clearAllESP()
+    for dragonBall, handles in pairs(espHandles) do
+        removeDragonBallESP(dragonBall)
+    end
+    espHandles = {}
+end
+
+-- Função para encontrar Esferas do Dragão
+local function findDragonBalls()
+    dragonBalls = {}
+    
+    if not updateCharacterReferences() then return 0 end
+    
+    -- Procurar em várias localizações
+    local possibleLocations = {
+        Workspace:FindFirstChild("Map"),
+        Workspace:FindFirstChild("Items"),
+        Workspace:FindFirstChild("DragonBalls"),
+        Workspace
+    }
+    
+    for _, location in pairs(possibleLocations) do
+        if location then
+            for _, obj in pairs(location:GetDescendants()) do
+                if obj:IsA("Model") and isDragonBall(obj) then
+                    local rootPartBall = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
+                    
+                    if rootPartBall then
+                        local distance = (rootPartBall.Position - rootPart.Position).Magnitude
+                        
+                        table.insert(dragonBalls, {
+                            Model = obj,
+                            RootPart = rootPartBall,
+                            Position = rootPartBall.Position,
+                            Distance = distance
+                        })
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Ordenar por distância
+    table.sort(dragonBalls, function(a, b)
+        return a.Distance < b.Distance
+    end)
+    
+    local count = #dragonBalls
+    espInfoLabel.Text = "🌟 Esferas: " .. count
+    
+    -- Criar/atualizar ESP se estiver ativo
+    if IS_ESP_ACTIVE then
+        for _, dragonBall in pairs(dragonBalls) do
+            createDragonBallESP(dragonBall.Model)
+        end
+    end
+    
+    return count
+end
+
+-- Função para coletar Esferas do Dragão
+local function collectDragonBalls()
+    if not updateCharacterReferences() then return end
+    
+    local found = findDragonBalls()
+    
+    if found > 0 then
+        statusLabel.Text = "💎 COLETANDO ESFERAS..."
+        statusLabel.TextColor3 = Color3.new(1, 1, 0)
+        
+        for _, dragonBall in pairs(dragonBalls) do
+            if not IS_FARMING then break end
+            
+            -- Teleportar para a esfera
+            local teleportPosition = dragonBall.Position + Vector3.new(0, 2, 0)
+            rootPart.CFrame = CFrame.new(teleportPosition)
+            
+            -- Esperar um pouco para coleta automática
+            wait(0.5)
+            
+            -- Verificar se a esfera ainda existe
+            if not dragonBall.Model or not dragonBall.Model.Parent then
+                espInfoLabel.Text = "🌟 Esferas: " .. (#dragonBalls - 1)
+            end
+            
+            RunService.Heartbeat:Wait()
+        end
+        
+        statusLabel.Text = "💎 COLETA CONCLUÍDA"
+    else
+        statusLabel.Text = "💎 NENHUMA ESFERA ENCONTRADA"
+    end
+end
+
+-- Função para encontrar TODOS os NPCs alvo
 local function findTargetNPCs()
     targetNPCs = {}
     
@@ -206,14 +407,13 @@ local function teleportCloseToNPC(targetPosition, targetRootPart)
     local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(teleportPosition, targetPosition)})
     tween:Play()
     
-    wait(0.15) -- Pequeno delay para o teleporte completar
+    wait(0.15)
     
     return true
 end
 
 -- Sistema de ataque APENAS com E
 local function performAttack()
-    -- Apenas tecla E (ataque rápido e contínuo)
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
         wait(0.03)
@@ -259,7 +459,7 @@ local function farmLoop()
                 
                 if teleportSuccess then
                     -- Spam de ataques RÁPIDOS apenas com E
-                    for i = 1, 10 do  -- 10 ataques rápidos por ciclo
+                    for i = 1, 10 do
                         if not IS_FARMING then break end
                         if not isTargetValid(currentTarget) then break end
                         
@@ -294,21 +494,28 @@ local function farmLoop()
     end
 end
 
+-- Loop do ESP
+local function espLoop()
+    while IS_ESP_ACTIVE do
+        findDragonBalls()
+        wait(2) -- Atualizar a cada 2 segundos
+    end
+end
+
 -- Conectar botões
 toggleButton.MouseButton1Click:Connect(function()
     IS_FARMING = not IS_FARMING
     
     if IS_FARMING then
-        toggleButton.Text = "⏹ PARAR"
+        toggleButton.Text = "⏹ PARAR FARM"
         toggleButton.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
         statusLabel.Text = "🟢 INICIANDO FARM..."
         statusLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
         
-        -- Iniciar em uma nova thread
         coroutine.wrap(farmLoop)()
         
     else
-        toggleButton.Text = "▶ INICIAR"
+        toggleButton.Text = "▶ INICIAR FARM"
         toggleButton.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
         statusLabel.Text = "🔴 PARADO"
         statusLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
@@ -327,9 +534,48 @@ searchButton.MouseButton1Click:Connect(function()
     end
 end)
 
+espButton.MouseButton1Click:Connect(function()
+    IS_ESP_ACTIVE = not IS_ESP_ACTIVE
+    
+    if IS_ESP_ACTIVE then
+        espButton.Text = "🌟 DESLIGAR ESP"
+        espButton.BackgroundColor3 = Color3.fromRGB(80, 180, 180)
+        statusLabel.Text = "🌟 ESP ESFERAS ATIVADO"
+        statusLabel.TextColor3 = Color3.new(1, 1, 0)
+        
+        -- Encontrar e criar ESP para esferas existentes
+        findDragonBalls()
+        coroutine.wrap(espLoop)()
+        
+    else
+        espButton.Text = "🌟 LIGAR ESP"
+        espButton.BackgroundColor3 = Color3.fromRGB(180, 80, 180)
+        statusLabel.Text = "🌟 ESP ESFERAS DESATIVADO"
+        statusLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
+        
+        -- Limpar todos os ESPs
+        clearAllESP()
+    end
+end)
+
+collectButton.MouseButton1Click:Connect(function()
+    if IS_FARMING then
+        statusLabel.Text = "❌ PARE O FARM PRIMEIRO"
+        statusLabel.TextColor3 = Color3.new(1, 0, 0)
+        wait(2)
+        if IS_FARMING then
+            statusLabel.Text = "🟢 ATACANDO NPC"
+        else
+            statusLabel.Text = "🔴 PARADO"
+        end
+    else
+        coroutine.wrap(collectDragonBalls)()
+    end
+end)
+
 -- Sistema de respawn automático
 player.CharacterAdded:Connect(function(newChar)
-    wait(2) -- Dar tempo para o personagem carregar completamente
+    wait(2)
     updateCharacterReferences()
     
     if IS_FARMING then
@@ -337,13 +583,20 @@ player.CharacterAdded:Connect(function(newChar)
         wait(1)
         coroutine.wrap(farmLoop)()
     end
+    
+    -- Recriar ESP se estiver ativo
+    if IS_ESP_ACTIVE then
+        wait(3)
+        findDragonBalls()
+    end
 end)
 
 -- Inicialização
-print("🐉 Auto Farm DBR - TENNENMAN, GOKU E CARL!")
-print("🎯 Teleporta a 3 studs de distância")
-print("⚡ Ataque RÁPIDO apenas com tecla E")
-print("🔍 Buscando: Tennenman, Goku e Carl")
+print("🐉 Auto Farm DBR + ESP Esferas do Dragão!")
+print("🎯 Farm: Tennenman, Goku e Carl")
+print("🌟 ESP para Esferas do Dragão (GUID)")
+print("💎 Coleta automática de esferas")
 
 -- Primeira busca
 findTargetNPCs()
+findDragonBalls()
