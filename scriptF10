@@ -1,182 +1,263 @@
---[[
-    EXPLORER MOBILE SIMPLES E FUNCIONAL
-    Versão corrigida - mostra tudo
-]]
-
+-- EXPLORER MOBILE COM CORES MELHORADAS
 local Players = game:GetService("Players")
-local PLAYER = Players.LocalPlayer
+local player = Players.LocalPlayer
 
--- Criar a interface
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "MobileExplorer"
-screenGui.Parent = PLAYER:WaitForChild("PlayerGui")
-screenGui.ResetOnSpawn = false
+-- Criar GUI básica
+local gui = Instance.new("ScreenGui")
+gui.Parent = player:WaitForChild("PlayerGui")
 
--- Botão para abrir/feichar
-local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 80, 0, 40)
-toggleButton.Position = UDim2.new(1, -90, 0, 10)
-toggleButton.AnchorPoint = Vector2.new(1, 0)
-toggleButton.Text = "📁 EXPLORER"
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-toggleButton.BackgroundTransparency = 0.2
-toggleButton.TextSize = 14
-toggleButton.ZIndex = 10
-toggleButton.Parent = screenGui
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 160, 0, 50)
+button.Position = UDim2.new(0, 10, 0, 10)
+button.Text = "📁 ABRIR EXPLORER"
+button.BackgroundColor3 = Color3.fromRGB(40, 40, 80)  -- Azul escuro
+button.TextColor3 = Color3.fromRGB(255, 255, 0)       -- Amarelo forte
+button.TextSize = 14
+button.Font = Enum.Font.SourceSansBold
+button.Parent = gui
 
--- Frame principal
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0.9, 0, 0.8, 0)
-mainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-mainFrame.BackgroundTransparency = 0.1
-mainFrame.Visible = false
-mainFrame.ZIndex = 5
-mainFrame.Parent = screenGui
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 350, 0, 500)
+frame.Position = UDim2.new(0.5, -175, 0.5, -250)
+frame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)   -- Preto azulado
+frame.Visible = false
+frame.Parent = gui
 
 -- Título
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
-title.Text = "EXPLORER - " .. game.Name
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-title.TextSize = 16
+title.Text = "🔍 EXPLORER MOBILE"
+title.TextColor3 = Color3.fromRGB(255, 255, 0)        -- Amarelo
+title.BackgroundColor3 = Color3.fromRGB(50, 50, 100)  -- Azul
+title.TextSize = 18
 title.Font = Enum.Font.SourceSansBold
-title.Parent = mainFrame
+title.Parent = frame
 
--- Área de scroll
-local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, -10, 1, -50)
-scrollFrame.Position = UDim2.new(0, 5, 0, 45)
-scrollFrame.BackgroundTransparency = 1
-scrollFrame.ScrollBarThickness = 8
-scrollFrame.Parent = mainFrame
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -10, 1, -100)
+scroll.Position = UDim2.new(0, 5, 0, 45)
+scroll.BackgroundColor3 = Color3.fromRGB(25, 25, 35)  -- Fundo escuro
+scroll.ScrollBarThickness = 10
+scroll.Parent = frame
 
--- Container dos itens
-local itemsContainer = Instance.new("Frame")
-itemsContainer.Size = UDim2.new(1, 0, 0, 0)
-itemsContainer.BackgroundTransparency = 1
-itemsContainer.Parent = scrollFrame
+local container = Instance.new("Frame")
+container.Size = UDim2.new(1, 0, 0, 0)
+container.BackgroundTransparency = 1
+container.Parent = scroll
 
--- Função para adicionar item
-local function AddItem(text, depth, object)
-    local itemFrame = Instance.new("Frame")
-    itemFrame.Size = UDim2.new(1, 0, 0, 25)
-    itemFrame.BackgroundTransparency = 1
+-- Função para mostrar objetos
+local function showObjects()
+    container:ClearAllChildren()
     
-    local indent = Instance.new("TextLabel")
-    indent.Size = UDim2.new(0, depth * 20, 1, 0)
-    indent.Text = ""
-    indent.BackgroundTransparency = 1
-    indent.Parent = itemFrame
+    local y = 0
     
-    local icon = Instance.new("TextLabel")
-    icon.Size = UDim2.new(0, 25, 1, 0)
-    icon.Position = UDim2.new(0, depth * 20, 0, 0)
-    icon.Text = "📄"
-    icon.TextColor3 = Color3.fromRGB(255, 255, 255)
-    icon.BackgroundTransparency = 1
-    icon.TextSize = 14
-    icon.Parent = itemFrame
+    -- Workspace
+    local wsLabel = Instance.new("TextLabel")
+    wsLabel.Size = UDim2.new(1, 0, 0, 35)
+    wsLabel.Position = UDim2.new(0, 0, 0, y)
+    wsLabel.Text = "🎯 WORKSPACE - " .. #workspace:GetChildren() .. " objetos"
+    wsLabel.TextColor3 = Color3.fromRGB(0, 255, 255)   -- Ciano
+    wsLabel.BackgroundColor3 = Color3.fromRGB(40, 60, 80)  -- Azul escuro
+    wsLabel.TextSize = 16
+    wsLabel.Font = Enum.Font.SourceSansBold
+    wsLabel.Parent = container
+    y = y + 40
     
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -(depth * 20 + 30), 1, 0)
-    label.Position = UDim2.new(0, depth * 20 + 25, 0, 0)
-    label.Text = text
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.BackgroundTransparency = 1
-    label.TextSize = 12
-    label.Parent = itemFrame
-    
-    itemFrame.Parent = itemsContainer
-    
-    return itemFrame
-end
-
--- Função para popular o explorer
-local function PopulateExplorer()
-    -- Limpar container
-    itemsContainer:ClearAllChildren()
-    
-    local yPosition = 0
-    
-    -- Adicionar Workspace
-    local workspaceItem = AddItem("Workspace (" .. #workspace:GetChildren() .. " objetos)", 0, workspace)
-    workspaceItem.Position = UDim2.new(0, 0, 0, yPosition)
-    yPosition = yPosition + 25
-    
-    -- Adicionar objetos do Workspace
-    for _, child in ipairs(workspace:GetChildren()) do
-        local childItem = AddItem(child.Name .. " (" .. child.ClassName .. ")", 1, child)
-        childItem.Position = UDim2.new(0, 0, 0, yPosition)
-        yPosition = yPosition + 25
-        
-        -- Adicionar netos (2º nível)
-        for _, grandchild in ipairs(child:GetChildren()) do
-            local grandchildItem = AddItem(grandchild.Name .. " (" .. grandchild.ClassName .. ")", 2, grandchild)
-            grandchildItem.Position = UDim2.new(0, 0, 0, yPosition)
-            yPosition = yPosition + 25
+    -- Listar objetos do Workspace
+    for i, obj in pairs(workspace:GetChildren()) do
+        if i <= 25 then -- Limitar para não travar
+            local objLabel = Instance.new("TextLabel")
+            objLabel.Size = UDim2.new(1, -10, 0, 28)
+            objLabel.Position = UDim2.new(0, 15, 0, y)
+            objLabel.Text = "  📄 " .. obj.Name
+            objLabel.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Branco puro
+            objLabel.BackgroundColor3 = i % 2 == 0 and Color3.fromRGB(35, 35, 50) or Color3.fromRGB(45, 45, 60)
+            objLabel.TextSize = 13
+            objLabel.TextXAlignment = Enum.TextXAlignment.Left
+            objLabel.Font = Enum.Font.SourceSans
+            objLabel.Parent = container
+            
+            -- Classe do objeto
+            local classLabel = Instance.new("TextLabel")
+            classLabel.Size = UDim2.new(0.4, 0, 1, 0)
+            classLabel.Position = UDim2.new(0.6, 0, 0, 0)
+            classLabel.Text = "(" .. obj.ClassName .. ")"
+            classLabel.TextColor3 = Color3.fromRGB(255, 200, 0)  -- Amarelo claro
+            classLabel.BackgroundTransparency = 1
+            classLabel.TextSize = 11
+            classLabel.TextXAlignment = Enum.TextXAlignment.Right
+            classLabel.Font = Enum.Font.SourceSans
+            classLabel.Parent = objLabel
+            
+            y = y + 30
         end
     end
     
-    -- Adicionar Lighting
-    local lightingItem = AddItem("Lighting (" .. #game.Lighting:GetChildren() .. " objetos)", 0, game.Lighting)
-    lightingItem.Position = UDim2.new(0, 0, 0, yPosition)
-    yPosition = yPosition + 25
+    -- Separador
+    y = y + 15
+    local sep1 = Instance.new("Frame")
+    sep1.Size = UDim2.new(1, 0, 0, 2)
+    sep1.Position = UDim2.new(0, 0, 0, y)
+    sep1.BackgroundColor3 = Color3.fromRGB(100, 100, 150)
+    sep1.Parent = container
+    y = y + 10
     
-    -- Adicionar ReplicatedStorage
-    local replicatedItem = AddItem("ReplicatedStorage (" .. #game.ReplicatedStorage:GetChildren() .. " objetos)", 0, game.ReplicatedStorage)
-    replicatedItem.Position = UDim2.new(0, 0, 0, yPosition)
-    yPosition = yPosition + 25
+    -- Lighting
+    local lightLabel = Instance.new("TextLabel")
+    lightLabel.Size = UDim2.new(1, 0, 0, 35)
+    lightLabel.Position = UDim2.new(0, 0, 0, y)
+    lightLabel.Text = "💡 LIGHTING - " .. #game.Lighting:GetChildren() .. " objetos"
+    lightLabel.TextColor3 = Color3.fromRGB(255, 150, 0)  -- Laranja
+    lightLabel.BackgroundColor3 = Color3.fromRGB(80, 60, 40)  -- Marrom
+    lightLabel.TextSize = 16
+    lightLabel.Font = Enum.Font.SourceSansBold
+    lightLabel.Parent = container
+    y = y + 40
     
-    -- Ajustar tamanho do container e scroll
-    itemsContainer.Size = UDim2.new(1, 0, 0, yPosition)
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    -- Listar objetos do Lighting
+    for i, obj in pairs(game.Lighting:GetChildren()) do
+        if i <= 15 then
+            local objLabel = Instance.new("TextLabel")
+            objLabel.Size = UDim2.new(1, -10, 0, 28)
+            objLabel.Position = UDim2.new(0, 15, 0, y)
+            objLabel.Text = "  💡 " .. obj.Name
+            objLabel.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Branco
+            objLabel.BackgroundColor3 = i % 2 == 0 and Color3.fromRGB(50, 35, 35) or Color3.fromRGB(60, 45, 45)
+            objLabel.TextSize = 13
+            objLabel.TextXAlignment = Enum.TextXAlignment.Left
+            objLabel.Font = Enum.Font.SourceSans
+            objLabel.Parent = container
+            
+            local classLabel = Instance.new("TextLabel")
+            classLabel.Size = UDim2.new(0.4, 0, 1, 0)
+            classLabel.Position = UDim2.new(0.6, 0, 0, 0)
+            classLabel.Text = "(" .. obj.ClassName .. ")"
+            classLabel.TextColor3 = Color3.fromRGB(255, 150, 150)  -- Rosa claro
+            classLabel.BackgroundTransparency = 1
+            classLabel.TextSize = 11
+            classLabel.TextXAlignment = Enum.TextXAlignment.Right
+            classLabel.Font = Enum.Font.SourceSans
+            classLabel.Parent = objLabel
+            
+            y = y + 30
+        end
+    end
+    
+    -- Separador
+    y = y + 15
+    local sep2 = Instance.new("Frame")
+    sep2.Size = UDim2.new(1, 0, 0, 2)
+    sep2.Position = UDim2.new(0, 0, 0, y)
+    sep2.BackgroundColor3 = Color3.fromRGB(100, 100, 150)
+    sep2.Parent = container
+    y = y + 10
+    
+    -- ReplicatedStorage
+    local repLabel = Instance.new("TextLabel")
+    repLabel.Size = UDim2.new(1, 0, 0, 35)
+    repLabel.Position = UDim2.new(0, 0, 0, y)
+    repLabel.Text = "📦 REPLICATED STORAGE - " .. #game.ReplicatedStorage:GetChildren() .. " objetos"
+    repLabel.TextColor3 = Color3.fromRGB(0, 255, 0)    -- Verde
+    repLabel.BackgroundColor3 = Color3.fromRGB(40, 80, 40)  -- Verde escuro
+    repLabel.TextSize = 16
+    repLabel.Font = Enum.Font.SourceSansBold
+    repLabel.Parent = container
+    y = y + 40
+    
+    -- Listar objetos do ReplicatedStorage
+    for i, obj in pairs(game.ReplicatedStorage:GetChildren()) do
+        if i <= 15 then
+            local objLabel = Instance.new("TextLabel")
+            objLabel.Size = UDim2.new(1, -10, 0, 28)
+            objLabel.Position = UDim2.new(0, 15, 0, y)
+            objLabel.Text = "  📦 " .. obj.Name
+            objLabel.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Branco
+            objLabel.BackgroundColor3 = i % 2 == 0 and Color3.fromRGB(35, 50, 35) or Color3.fromRGB(45, 60, 45)
+            objLabel.TextSize = 13
+            objLabel.TextXAlignment = Enum.TextXAlignment.Left
+            objLabel.Font = Enum.Font.SourceSans
+            objLabel.Parent = container
+            
+            local classLabel = Instance.new("TextLabel")
+            classLabel.Size = UDim2.new(0.4, 0, 1, 0)
+            classLabel.Position = UDim2.new(0.6, 0, 0, 0)
+            classLabel.Text = "(" .. obj.ClassName .. ")"
+            classLabel.TextColor3 = Color3.fromRGB(150, 255, 150)  -- Verde claro
+            classLabel.BackgroundTransparency = 1
+            classLabel.TextSize = 11
+            classLabel.TextXAlignment = Enum.TextXAlignment.Right
+            classLabel.Font = Enum.Font.SourceSans
+            classLabel.Parent = objLabel
+            
+            y = y + 30
+        end
+    end
+    
+    -- Ajustar tamanhos
+    container.Size = UDim2.new(1, 0, 0, y + 10)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, y + 10)
 end
 
 -- Botão de atualizar
-local refreshButton = Instance.new("TextButton")
-refreshButton.Size = UDim2.new(0, 100, 0, 30)
-refreshButton.Position = UDim2.new(0.5, -50, 1, -35)
-refreshButton.Text = "🔄 ATUALIZAR"
-refreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-refreshButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-refreshButton.TextSize = 12
-refreshButton.Parent = mainFrame
+local refreshBtn = Instance.new("TextButton")
+refreshBtn.Size = UDim2.new(0, 120, 0, 35)
+refreshBtn.Position = UDim2.new(0.3, -60, 1, -45)
+refreshBtn.Text = "🔄 ATUALIZAR"
+refreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Branco
+refreshBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)  -- Azul
+refreshBtn.TextSize = 12
+refreshBtn.Font = Enum.Font.SourceSansBold
+refreshBtn.Parent = frame
+refreshBtn.MouseButton1Click:Connect(showObjects)
 
 -- Botão de fechar
-local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 100, 0, 30)
-closeButton.Position = UDim2.new(0.5, -50, 1, -70)
-closeButton.Text = "❌ FECHAR"
-closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
-closeButton.TextSize = 12
-closeButton.Parent = mainFrame
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 120, 0, 35)
+closeBtn.Position = UDim2.new(0.7, -60, 1, -45)
+closeBtn.Text = "❌ FECHAR"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Branco
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)  -- Vermelho
+closeBtn.TextSize = 12
+closeBtn.Font = Enum.Font.SourceSansBold
+closeBtn.Parent = frame
+
+-- Contador de objetos
+local counterLabel = Instance.new("TextLabel")
+counterLabel.Size = UDim2.new(1, 0, 0, 25)
+counterLabel.Position = UDim2.new(0, 0, 1, -85)
+counterLabel.Text = "Total de objetos carregados: 0"
+counterLabel.TextColor3 = Color3.fromRGB(255, 255, 0)  -- Amarelo
+counterLabel.BackgroundTransparency = 1
+counterLabel.TextSize = 12
+counterLabel.Font = Enum.Font.SourceSansBold
+counterLabel.Parent = frame
+
+-- Atualizar contador
+local function updateCounter()
+    local total = #workspace:GetChildren() + #game.Lighting:GetChildren() + #game.ReplicatedStorage:GetChildren()
+    counterLabel.Text = "Total de objetos carregados: " .. total
+end
 
 -- Conexões dos botões
-toggleButton.MouseButton1Click:Connect(function()
-    mainFrame.Visible = not mainFrame.Visible
-    if mainFrame.Visible then
-        PopulateExplorer()
-        toggleButton.Text = "📁 ABERTO"
+button.MouseButton1Click:Connect(function()
+    frame.Visible = not frame.Visible
+    if frame.Visible then
+        showObjects()
+        updateCounter()
+        button.Text = "📁 FECHAR EXPLORER"
+        button.BackgroundColor3 = Color3.fromRGB(80, 40, 40)  -- Vermelho escuro quando aberto
     else
-        toggleButton.Text = "📁 EXPLORER"
+        button.Text = "📁 ABRIR EXPLORER"
+        button.BackgroundColor3 = Color3.fromRGB(40, 40, 80)  -- Azul quando fechado
     end
 end)
 
-refreshButton.MouseButton1Click:Connect(PopulateExplorer)
-
-closeButton.MouseButton1Click:Connect(function()
-    mainFrame.Visible = false
-    toggleButton.Text = "📁 EXPLORER"
+closeBtn.MouseButton1Click:Connect(function()
+    frame.Visible = false
+    button.Text = "📁 ABRIR EXPLORER"
+    button.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
 end)
 
--- Popular inicialmente
-PopulateExplorer()
-
-print("🔍 Explorer Mobile carregado!")
-print("Clique em '📁 EXPLORER' para abrir")
-print("Encontrados: " .. #workspace:GetChildren() .. " objetos no Workspace")
+print("🎯 EXPLORER MOBILE CARREGADO!")
+print("📊 Cores melhoradas para melhor visibilidade")
+print("🎨 Textos em branco puro com fundos contrastantes")
