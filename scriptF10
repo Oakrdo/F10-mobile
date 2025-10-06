@@ -1,6 +1,6 @@
 --[[
-    EXPLORER MOBILE CORRIGIDO
-    Folders funcionais + Letras amarelas brilhantes
+    EXPLORER MOBILE - LETRAS GRANDES E BRILHANTES
+    Folders funcionais + Texto bem visível
 ]]
 
 local Players = game:GetService("Players")
@@ -16,18 +16,17 @@ screenGui.Name = "MobileExplorer"
 screenGui.Parent = PLAYER:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
 
--- Botão para abrir/fechar
+-- Botão para abrir/fechar (GRANDE)
 local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 90, 0, 45)
-toggleButton.Position = UDim2.new(1, -100, 0, 10)
+toggleButton.Size = UDim2.new(0, 120, 0, 50)
+toggleButton.Position = UDim2.new(1, -130, 0, 10)
 toggleButton.AnchorPoint = Vector2.new(1, 0)
 toggleButton.Text = "📁 EXPLORER"
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 0)  -- AMARELO BRILHANTE
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 0)
 toggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-toggleButton.BackgroundTransparency = 0.1
-toggleButton.TextSize = 14
-toggleButton.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-toggleButton.TextStrokeTransparency = 0.5
+toggleButton.BackgroundTransparency = 0
+toggleButton.TextSize = 16
+toggleButton.TextScaled = false
 toggleButton.ZIndex = 10
 toggleButton.Parent = screenGui
 
@@ -35,30 +34,28 @@ toggleButton.Parent = screenGui
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0.95, 0, 0.85, 0)
 mainFrame.Position = UDim2.new(0.025, 0, 0.075, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-mainFrame.BackgroundTransparency = 0.05
+mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+mainFrame.BackgroundTransparency = 0
 mainFrame.Visible = false
 mainFrame.ZIndex = 5
 mainFrame.Parent = screenGui
 
--- Título
+-- Título (GRANDE)
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 45)
+title.Size = UDim2.new(1, 0, 0, 50)
 title.Text = "🔍 EXPLORER MOBILE"
-title.TextColor3 = Color3.fromRGB(255, 255, 0)  -- AMARELO BRILHANTE
-title.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
-title.TextSize = 18
+title.TextColor3 = Color3.fromRGB(255, 255, 0)
+title.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+title.TextSize = 20
 title.Font = Enum.Font.SourceSansBold
-title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-title.TextStrokeTransparency = 0.3
 title.Parent = mainFrame
 
 -- Área de scroll
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, -10, 1, -100)
-scrollFrame.Position = UDim2.new(0, 5, 0, 50)
+scrollFrame.Size = UDim2.new(1, -10, 1, -110)
+scrollFrame.Position = UDim2.new(0, 5, 0, 55)
 scrollFrame.BackgroundTransparency = 1
-scrollFrame.ScrollBarThickness = 10
+scrollFrame.ScrollBarThickness = 12
 scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 0)
 scrollFrame.Parent = mainFrame
 
@@ -78,51 +75,59 @@ local function GetIcon(className)
         Model = "📦",
         Sound = "🔊",
         Camera = "📷",
-        Light = "💡"
+        Light = "💡",
+        Humanoid = "👤"
     }
     return icons[className] or "📄"
 end
 
--- Função para adicionar item com clique
+-- Função para adicionar item
 local function AddItem(object, depth, parent)
     local itemFrame = Instance.new("Frame")
-    itemFrame.Size = UDim2.new(1, 0, 0, 30)
+    itemFrame.Size = UDim2.new(1, 0, 0, 35)  -- MAIOR
     itemFrame.BackgroundTransparency = 1
     itemFrame.Name = "Item_" .. object.Name
     
-    -- Botão de expandir (para folders)
+    -- Botão de expandir (MAIOR)
     local expandButton = Instance.new("TextButton")
-    expandButton.Size = UDim2.new(0, 25, 0, 25)
-    expandButton.Position = UDim2.new(0, depth * 25, 0, 2)
+    expandButton.Size = UDim2.new(0, 30, 0, 30)
+    expandButton.Position = UDim2.new(0, depth * 30, 0, 2)
     expandButton.BackgroundTransparency = 1
     expandButton.TextColor3 = Color3.fromRGB(255, 255, 0)
-    expandButton.TextSize = 14
+    expandButton.TextSize = 16  -- MAIOR
     expandButton.Parent = itemFrame
     
-    -- Ícone
+    -- Ícone (MAIOR)
     local icon = Instance.new("TextLabel")
-    icon.Size = UDim2.new(0, 25, 0, 25)
-    icon.Position = UDim2.new(0, depth * 25 + 25, 0, 2)
+    icon.Size = UDim2.new(0, 30, 0, 30)
+    icon.Position = UDim2.new(0, depth * 30 + 30, 0, 2)
     icon.Text = GetIcon(object.ClassName)
-    icon.TextColor3 = Color3.fromRGB(255, 255, 0)  -- AMARELO BRILHANTE
+    icon.TextColor3 = Color3.fromRGB(255, 255, 0)
     icon.BackgroundTransparency = 1
-    icon.TextSize = 14
-    icon.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    icon.TextStrokeTransparency = 0.3
+    icon.TextSize = 16  -- MAIOR
     icon.Parent = itemFrame
     
-    -- Nome do objeto
+    -- Nome do objeto (MAIOR)
     local nameLabel = Instance.new("TextButton")
-    nameLabel.Size = UDim2.new(1, -(depth * 25 + 60), 0, 25)
-    nameLabel.Position = UDim2.new(0, depth * 25 + 55, 0, 2)
-    nameLabel.Text = object.Name .. " (" .. object.ClassName .. ")"
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 0)  -- AMARELO BRILHANTE
+    nameLabel.Size = UDim2.new(1, -(depth * 30 + 70), 0, 30)
+    nameLabel.Position = UDim2.new(0, depth * 30 + 65, 0, 2)
+    nameLabel.Text = object.Name
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.BackgroundTransparency = 1
-    nameLabel.TextSize = 12
-    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    nameLabel.TextStrokeTransparency = 0.4
+    nameLabel.TextSize = 14  -- MAIOR
     nameLabel.Parent = itemFrame
+    
+    -- Classe do objeto (MAIOR)
+    local classLabel = Instance.new("TextLabel")
+    classLabel.Size = UDim2.new(0.4, 0, 0, 15)
+    classLabel.Position = UDim2.new(0, depth * 30 + 65, 0, 22)
+    classLabel.Text = "(" .. object.ClassName .. ")"
+    classLabel.TextColor3 = Color3.fromRGB(200, 200, 0)  -- Amarelo mais escuro
+    classLabel.TextXAlignment = Enum.TextXAlignment.Left
+    classLabel.BackgroundTransparency = 1
+    classLabel.TextSize = 10
+    classLabel.Parent = itemFrame
     
     -- Verificar se é folder/expandível
     local hasChildren = #object:GetChildren() > 0
@@ -145,11 +150,6 @@ local function AddItem(object, depth, parent)
         expandButton.TextColor3 = Color3.fromRGB(150, 150, 0)
     end
     
-    -- Evento para selecionar item
-    nameLabel.MouseButton1Click:Connect(function()
-        print("📌 Selecionado: " .. object.Name .. " (" .. object.ClassName .. ")")
-    end)
-    
     itemFrame.Parent = parent
     return itemFrame
 end
@@ -159,11 +159,11 @@ local function AddObjects(parentObject, depth, parentContainer)
     local yPosition = 0
     
     for _, child in ipairs(parentObject:GetChildren()) do
-        -- Pular alguns objetos para não poluir
+        -- Pular scripts para não poluir
         if not child:IsA("Script") and not child:IsA("LocalScript") then
             local item = AddItem(child, depth, parentContainer)
             item.Position = UDim2.new(0, 0, 0, yPosition)
-            yPosition = yPosition + 30
+            yPosition = yPosition + 35
             
             -- Adicionar filhos se for folder expandido
             if expandedFolders[child] and #child:GetChildren() > 0 then
@@ -182,17 +182,15 @@ local function PopulateExplorer()
     
     local totalHeight = 0
     
-    -- Adicionar Workspace
+    -- Adicionar Workspace (GRANDE)
     local workspaceHeader = Instance.new("TextButton")
-    workspaceHeader.Size = UDim2.new(1, 0, 0, 35)
+    workspaceHeader.Size = UDim2.new(1, 0, 0, 40)
     workspaceHeader.Position = UDim2.new(0, 0, 0, totalHeight)
-    workspaceHeader.Text = "🎯 WORKSPACE (" .. #workspace:GetChildren() .. " objetos)"
+    workspaceHeader.Text = "🎯 WORKSPACE - " .. #workspace:GetChildren() .. " objetos"
     workspaceHeader.TextColor3 = Color3.fromRGB(255, 255, 0)
-    workspaceHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-    workspaceHeader.TextSize = 14
+    workspaceHeader.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+    workspaceHeader.TextSize = 16
     workspaceHeader.Font = Enum.Font.SourceSansBold
-    workspaceHeader.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    workspaceHeader.TextStrokeTransparency = 0.3
     workspaceHeader.Parent = itemsContainer
     
     -- Expandir/colapsar Workspace
@@ -201,25 +199,25 @@ local function PopulateExplorer()
         PopulateExplorer()
     end)
     
-    totalHeight = totalHeight + 35
+    totalHeight = totalHeight + 40
     
     -- Adicionar objetos do Workspace se expandido
     if expandedFolders[workspace] then
         totalHeight = totalHeight + AddObjects(workspace, 0, itemsContainer)
     end
     
-    -- Adicionar Lighting
+    -- Espaço entre seções
     totalHeight = totalHeight + 10
+    
+    -- Adicionar Lighting (GRANDE)
     local lightingHeader = Instance.new("TextButton")
-    lightingHeader.Size = UDim2.new(1, 0, 0, 35)
+    lightingHeader.Size = UDim2.new(1, 0, 0, 40)
     lightingHeader.Position = UDim2.new(0, 0, 0, totalHeight)
-    lightingHeader.Text = "💡 LIGHTING (" .. #game.Lighting:GetChildren() .. " objetos)"
+    lightingHeader.Text = "💡 LIGHTING - " .. #game.Lighting:GetChildren() .. " objetos"
     lightingHeader.TextColor3 = Color3.fromRGB(255, 255, 0)
-    lightingHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-    lightingHeader.TextSize = 14
+    lightingHeader.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+    lightingHeader.TextSize = 16
     lightingHeader.Font = Enum.Font.SourceSansBold
-    lightingHeader.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    lightingHeader.TextStrokeTransparency = 0.3
     lightingHeader.Parent = itemsContainer
     
     lightingHeader.MouseButton1Click:Connect(function()
@@ -227,7 +225,7 @@ local function PopulateExplorer()
         PopulateExplorer()
     end)
     
-    totalHeight = totalHeight + 35
+    totalHeight = totalHeight + 40
     
     -- Adicionar objetos do Lighting se expandido
     if expandedFolders[game.Lighting] then
@@ -239,28 +237,24 @@ local function PopulateExplorer()
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
 end
 
--- Botão de atualizar
+-- Botão de atualizar (GRANDE)
 local refreshButton = Instance.new("TextButton")
-refreshButton.Size = UDim2.new(0, 120, 0, 35)
-refreshButton.Position = UDim2.new(0.5, -60, 1, -45)
+refreshButton.Size = UDim2.new(0, 140, 0, 40)
+refreshButton.Position = UDim2.new(0.5, -70, 1, -50)
 refreshButton.Text = "🔄 ATUALIZAR"
 refreshButton.TextColor3 = Color3.fromRGB(255, 255, 0)
-refreshButton.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-refreshButton.TextSize = 14
-refreshButton.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-refreshButton.TextStrokeTransparency = 0.3
+refreshButton.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+refreshButton.TextSize = 16
 refreshButton.Parent = mainFrame
 
--- Botão de fechar
+-- Botão de fechar (GRANDE)
 local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 120, 0, 35)
-closeButton.Position = UDim2.new(0.5, -60, 1, -85)
+closeButton.Size = UDim2.new(0, 140, 0, 40)
+closeButton.Position = UDim2.new(0.5, -70, 1, -95)
 closeButton.Text = "❌ FECHAR"
 closeButton.TextColor3 = Color3.fromRGB(255, 255, 0)
 closeButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
-closeButton.TextSize = 14
-closeButton.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-closeButton.TextStrokeTransparency = 0.3
+closeButton.TextSize = 16
 closeButton.Parent = mainFrame
 
 -- Conexões dos botões
@@ -269,27 +263,27 @@ toggleButton.MouseButton1Click:Connect(function()
     if mainFrame.Visible then
         PopulateExplorer()
         toggleButton.Text = "📁 ABERTO"
-        toggleButton.TextColor3 = Color3.fromRGB(0, 255, 0)  -- Verde quando aberto
+        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
     else
         toggleButton.Text = "📁 EXPLORER"
-        toggleButton.TextColor3 = Color3.fromRGB(255, 255, 0)  -- Amarelo quando fechado
+        toggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
     end
 end)
 
 refreshButton.MouseButton1Click:Connect(function()
     PopulateExplorer()
-    print("🔄 Explorer atualizado!")
 end)
 
 closeButton.MouseButton1Click:Connect(function()
     mainFrame.Visible = false
     toggleButton.Text = "📁 EXPLORER"
-    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 0)
+    toggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
 end)
 
 -- Expandir Workspace por padrão
 expandedFolders[workspace] = true
 
-print("🔍 Explorer Mobile CARREGADO!")
-print("📁 Clique em '📁 EXPLORER' para abrir")
-print("▶ Use os botões ▶/▼ para expandir/colapsar folders")
+print("🔍 EXPLORER MOBILE INICIADO!")
+print("📁 Botão: 120x50 pixels")
+print("📝 Texto: 14-20 pixels")
+print("🎯 Workspace expandido automaticamente")
