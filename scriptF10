@@ -1,307 +1,306 @@
--- Mobile Explorer Viewer para Roblox
+-- Mobile Explorer Viewer para Roblox - Versão Corrigida
 -- Por: DeepSeek-R1
 
-local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-
--- Configurações
-local MAX_ITEMS = 50  -- Máximo de itens para mostrar
-local REFRESH_RATE = 5  -- Segundos entre atualizações
-
--- Variáveis
-local screenGui, mainFrame, contentFrame, scrollFrame
-local currentPath = {"workspace"}
-local objectCache = {}
-
--- Função para criar a GUI móvel
-local function createMobileExplorer()
-    -- ScreenGui principal
-    screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "MobileExplorer"
-    screenGui.Parent = Player:WaitForChild("PlayerGui")
-    screenGui.ResetOnSpawn = false
-
-    -- Frame principal
-    mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0.9, 0, 0.8, 0)
-    mainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    mainFrame.BackgroundTransparency = 0.1
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Parent = screenGui
-
-    -- Barra de título
-    local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0.08, 0)
-    titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    titleBar.BorderSizePixel = 0
-    titleBar.Parent = mainFrame
-
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(0.7, 0, 1, 0)
-    titleLabel.Position = UDim2.new(0.02, 0, 0, 0)
-    titleLabel.Text = "📱 MOBILE EXPLORER"
-    titleLabel.TextColor3 = Color3.new(1, 1, 1)
-    titleLabel.TextScaled = true
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Font = Enum.Font.SourceSansBold
-    titleLabel.Parent = titleBar
-
-    -- Botão de refresh
-    local refreshButton = Instance.new("TextButton")
-    refreshButton.Size = UDim2.new(0.14, 0, 0.8, 0)
-    refreshButton.Position = UDim2.new(0.72, 0, 0.1, 0)
-    refreshButton.Text = "🔄"
-    refreshButton.TextColor3 = Color3.new(1, 1, 1)
-    refreshButton.TextScaled = true
-    refreshButton.BackgroundColor3 = Color3.fromRGB(80, 160, 220)
-    refreshButton.Parent = titleBar
-
-    -- Botão de voltar
-    local backButton = Instance.new("TextButton")
-    backButton.Size = UDim2.new(0.14, 0, 0.8, 0)
-    backButton.Position = UDim2.new(0.86, 0, 0.1, 0)
-    backButton.Text = "⬅️"
-    backButton.TextColor3 = Color3.new(1, 1, 1)
-    backButton.TextScaled = true
-    backButton.BackgroundColor3 = Color3.fromRGB(220, 80, 80)
-    backButton.Parent = titleBar
-
-    -- Barra de caminho
-    local pathBar = Instance.new("Frame")
-    pathBar.Size = UDim2.new(1, 0, 0.06, 0)
-    pathBar.Position = UDim2.new(0, 0, 0.08, 0)
-    pathBar.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    pathBar.BorderSizePixel = 0
-    pathBar.Parent = mainFrame
-
-    local pathLabel = Instance.new("TextLabel")
-    pathLabel.Size = UDim2.new(0.98, 0, 1, 0)
-    pathLabel.Position = UDim2.new(0.01, 0, 0, 0)
-    pathLabel.Text = "workspace"
-    pathLabel.TextColor3 = Color3.new(0.8, 0.8, 1)
-    pathLabel.TextScaled = true
-    pathLabel.TextXAlignment = Enum.TextXAlignment.Left
-    pathLabel.BackgroundTransparency = 1
-    pathLabel.Parent = pathBar
-
-    -- Frame de conteúdo com scrolling
-    scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(1, 0, 0.86, 0)
-    scrollFrame.Position = UDim2.new(0, 0, 0.14, 0)
-    scrollFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 8
-    scrollFrame.Parent = mainFrame
-
-    -- Lista de objetos
-    contentFrame = Instance.new("Frame")
-    contentFrame.Size = UDim2.new(1, 0, 0, 0)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.Parent = scrollFrame
-
-    -- Conectar botões
-    refreshButton.MouseButton1Click:Connect(function()
-        updateExplorerView()
-    end)
-
-    backButton.MouseButton1Click:Connect(function()
-        if #currentPath > 1 then
-            table.remove(currentPath)
-            updateExplorerView()
-        end
-    end)
-
-    return {
-        MainFrame = mainFrame,
-        PathLabel = pathLabel,
-        ScrollFrame = scrollFrame,
-        ContentFrame = contentFrame
-    }
-end
-
--- Função para obter o objeto atual baseado no caminho
-local function getCurrentObject()
-    local current = workspace
+-- Esperar pelos serviços carregarem
+local success, error = pcall(function()
+    local Players = game:GetService("Players")
+    local Player = Players.LocalPlayer
     
-    for i = 2, #currentPath do
-        local nextObj = current:FindFirstChild(currentPath[i])
-        if nextObj then
-            current = nextObj
-        else
-            break
-        end
+    -- Esperar pelo PlayerGui
+    while not Player:FindFirstChild("PlayerGui") do
+        wait(1)
     end
     
-    return current
-end
-
--- Função para criar item da lista
-local function createListItem(name, object, index, isFolder)
-    local itemFrame = Instance.new("Frame")
-    itemFrame.Size = UDim2.new(1, 0, 0, 40)
-    itemFrame.Position = UDim2.new(0, 0, 0, (index-1) * 40)
-    itemFrame.BackgroundColor3 = index % 2 == 0 and Color3.fromRGB(45, 45, 55) or Color3.fromRGB(35, 35, 45)
-    itemFrame.BorderSizePixel = 0
-    itemFrame.Parent = contentFrame
-
-    local iconLabel = Instance.new("TextLabel")
-    iconLabel.Size = UDim2.new(0.1, 0, 1, 0)
-    iconLabel.Position = UDim2.new(0, 0, 0, 0)
-    iconLabel.Text = isFolder and "📁" or "📄"
-    iconLabel.TextColor3 = isFolder and Color3.fromRGB(100, 180, 255) or Color3.fromRGB(200, 200, 200)
-    iconLabel.TextScaled = true
-    iconLabel.BackgroundTransparency = 1
-    iconLabel.Parent = itemFrame
-
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(0.6, 0, 1, 0)
-    nameLabel.Position = UDim2.new(0.1, 0, 0, 0)
-    nameLabel.Text = name
-    nameLabel.TextColor3 = Color3.new(1, 1, 1)
-    nameLabel.TextScaled = true
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Parent = itemFrame
-
-    local typeLabel = Instance.new("TextLabel")
-    typeLabel.Size = UDim2.new(0.3, 0, 1, 0)
-    typeLabel.Position = UDim2.new(0.7, 0, 0, 0)
-    typeLabel.Text = object.ClassName
-    typeLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-    typeLabel.TextScaled = true
-    typeLabel.BackgroundTransparency = 1
-    typeLabel.Parent = itemFrame
-
-    -- Botão de ação
-    if isFolder then
-        local expandButton = Instance.new("TextButton")
-        expandButton.Size = UDim2.new(1, 0, 1, 0)
-        expandButton.BackgroundTransparency = 1
-        expandButton.Text = ""
-        expandButton.Parent = itemFrame
+    local UIS = game:GetService("UserInputService")
+    
+    -- Configurações
+    local MAX_ITEMS = 50
+    local REFRESH_RATE = 5
+    
+    -- Variáveis
+    local screenGui, mainFrame, contentFrame, scrollFrame
+    local currentPath = {"workspace"}
+    
+    -- Função para criar a GUI móvel
+    local function createMobileExplorer()
+        -- ScreenGui principal
+        screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "MobileExplorer"
+        screenGui.Parent = Player.PlayerGui
+        screenGui.ResetOnSpawn = false
         
-        expandButton.MouseButton1Click:Connect(function()
-            table.insert(currentPath, name)
+        -- Frame principal
+        mainFrame = Instance.new("Frame")
+        mainFrame.Size = UDim2.new(0.9, 0, 0.8, 0)
+        mainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
+        mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        mainFrame.BackgroundTransparency = 0.1
+        mainFrame.BorderSizePixel = 0
+        mainFrame.Parent = screenGui
+        
+        -- Barra de título
+        local titleBar = Instance.new("Frame")
+        titleBar.Size = UDim2.new(1, 0, 0.08, 0)
+        titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        titleBar.BorderSizePixel = 0
+        titleBar.Parent = mainFrame
+        
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+        titleLabel.Position = UDim2.new(0.02, 0, 0, 0)
+        titleLabel.Text = "📱 EXPLORER"
+        titleLabel.TextColor3 = Color3.new(1, 1, 1)
+        titleLabel.TextScaled = true
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Font = Enum.Font.SourceSansBold
+        titleLabel.Parent = titleBar
+        
+        -- Botão de refresh
+        local refreshButton = Instance.new("TextButton")
+        refreshButton.Size = UDim2.new(0.14, 0, 0.8, 0)
+        refreshButton.Position = UDim2.new(0.72, 0, 0.1, 0)
+        refreshButton.Text = "🔄"
+        refreshButton.TextColor3 = Color3.new(1, 1, 1)
+        refreshButton.TextScaled = true
+        refreshButton.BackgroundColor3 = Color3.fromRGB(80, 160, 220)
+        refreshButton.Parent = titleBar
+        
+        -- Botão de voltar
+        local backButton = Instance.new("TextButton")
+        backButton.Size = UDim2.new(0.14, 0, 0.8, 0)
+        backButton.Position = UDim2.new(0.86, 0, 0.1, 0)
+        backButton.Text = "⬅️"
+        backButton.TextColor3 = Color3.new(1, 1, 1)
+        backButton.TextScaled = true
+        backButton.BackgroundColor3 = Color3.fromRGB(220, 80, 80)
+        backButton.Parent = titleBar
+        
+        -- Barra de caminho
+        local pathBar = Instance.new("Frame")
+        pathBar.Size = UDim2.new(1, 0, 0.06, 0)
+        pathBar.Position = UDim2.new(0, 0, 0.08, 0)
+        pathBar.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        pathBar.BorderSizePixel = 0
+        pathBar.Parent = mainFrame
+        
+        local pathLabel = Instance.new("TextLabel")
+        pathLabel.Size = UDim2.new(0.98, 0, 1, 0)
+        pathLabel.Position = UDim2.new(0.01, 0, 0, 0)
+        pathLabel.Text = "workspace"
+        pathLabel.TextColor3 = Color3.new(0.8, 0.8, 1)
+        pathLabel.TextScaled = true
+        pathLabel.TextXAlignment = Enum.TextXAlignment.Left
+        pathLabel.BackgroundTransparency = 1
+        pathLabel.Parent = pathBar
+        
+        -- Frame de conteúdo com scrolling
+        scrollFrame = Instance.new("ScrollingFrame")
+        scrollFrame.Size = UDim2.new(1, 0, 0.86, 0)
+        scrollFrame.Position = UDim2.new(0, 0, 0.14, 0)
+        scrollFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+        scrollFrame.BorderSizePixel = 0
+        scrollFrame.ScrollBarThickness = 8
+        scrollFrame.Parent = mainFrame
+        
+        -- Lista de objetos
+        contentFrame = Instance.new("Frame")
+        contentFrame.Size = UDim2.new(1, 0, 0, 0)
+        contentFrame.BackgroundTransparency = 1
+        contentFrame.Parent = scrollFrame
+        
+        -- Conectar botões
+        refreshButton.MouseButton1Click:Connect(function()
             updateExplorerView()
         end)
-    end
-
-    return itemFrame
-end
-
--- Função para atualizar a visualização
-local function updateExplorerView()
-    -- Limpar conteúdo anterior
-    for _, child in ipairs(contentFrame:GetChildren()) do
-        child:Destroy()
-    end
-
-    local currentObj = getCurrentObject()
-    local gui = createMobileExplorer()
-    
-    -- Atualizar barra de caminho
-    gui.PathLabel.Text = table.concat(currentPath, " > ")
-
-    -- Obter filhos do objeto atual
-    local children = currentObj:GetChildren()
-    local itemCount = 0
-
-    -- Ordenar: pastas primeiro, depois arquivos
-    local folders = {}
-    local files = {}
-
-    for _, child in ipairs(children) do
-        if itemCount < MAX_ITEMS then
-            if child:IsA("Folder") or child:IsA("Model") then
-                table.insert(folders, child)
-            else
-                table.insert(files, child)
+        
+        backButton.MouseButton1Click:Connect(function()
+            if #currentPath > 1 then
+                table.remove(currentPath)
+                updateExplorerView()
             end
-            itemCount = itemCount + 1
-        else
-            break
+        end)
+        
+        return {
+            MainFrame = mainFrame,
+            PathLabel = pathLabel,
+            ScrollFrame = scrollFrame,
+            ContentFrame = contentFrame
+        }
+    end
+    
+    -- Função para obter o objeto atual baseado no caminho
+    local function getCurrentObject()
+        local current = workspace
+        
+        for i = 2, #currentPath do
+            local nextObj = current:FindFirstChild(currentPath[i])
+            if nextObj then
+                current = nextObj
+            else
+                break
+            end
+        end
+        
+        return current
+    end
+    
+    -- Função para criar item da lista
+    local function createListItem(name, object, index, isFolder)
+        local itemFrame = Instance.new("Frame")
+        itemFrame.Size = UDim2.new(1, 0, 0, 35)
+        itemFrame.Position = UDim2.new(0, 0, 0, (index-1) * 35)
+        itemFrame.BackgroundColor3 = index % 2 == 0 and Color3.fromRGB(45, 45, 55) or Color3.fromRGB(35, 35, 45)
+        itemFrame.BorderSizePixel = 0
+        itemFrame.Parent = contentFrame
+        
+        local iconLabel = Instance.new("TextLabel")
+        iconLabel.Size = UDim2.new(0.1, 0, 1, 0)
+        iconLabel.Position = UDim2.new(0, 0, 0, 0)
+        iconLabel.Text = isFolder and "📁" or "📄"
+        iconLabel.TextColor3 = isFolder and Color3.fromRGB(100, 180, 255) or Color3.fromRGB(200, 200, 200)
+        iconLabel.TextScaled = true
+        iconLabel.BackgroundTransparency = 1
+        iconLabel.Parent = itemFrame
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(0.6, 0, 0.6, 0)
+        nameLabel.Position = UDim2.new(0.1, 0, 0, 0)
+        nameLabel.Text = name
+        nameLabel.TextColor3 = Color3.new(1, 1, 1)
+        nameLabel.TextScaled = true
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Parent = itemFrame
+        
+        local typeLabel = Instance.new("TextLabel")
+        typeLabel.Size = UDim2.new(0.6, 0, 0.4, 0)
+        typeLabel.Position = UDim2.new(0.1, 0, 0.6, 0)
+        typeLabel.Text = object.ClassName
+        typeLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        typeLabel.TextScaled = true
+        typeLabel.TextXAlignment = Enum.TextXAlignment.Left
+        typeLabel.BackgroundTransparency = 1
+        typeLabel.Parent = itemFrame
+        
+        -- Botão de ação
+        if isFolder then
+            local expandButton = Instance.new("TextButton")
+            expandButton.Size = UDim2.new(1, 0, 1, 0)
+            expandButton.BackgroundTransparency = 1
+            expandButton.Text = ""
+            expandButton.Parent = itemFrame
+            
+            expandButton.MouseButton1Click:Connect(function()
+                table.insert(currentPath, name)
+                updateExplorerView()
+            end)
+        end
+        
+        return itemFrame
+    end
+    
+    -- Função para atualizar a visualização
+    local function updateExplorerView()
+        -- Limpar conteúdo anterior
+        for _, child in ipairs(contentFrame:GetChildren()) do
+            child:Destroy()
+        end
+        
+        local currentObj = getCurrentObject()
+        local gui = createMobileExplorer and createMobileExplorer() or nil
+        
+        if gui and gui.PathLabel then
+            -- Atualizar barra de caminho
+            gui.PathLabel.Text = table.concat(currentPath, " > ")
+        end
+        
+        -- Obter filhos do objeto atual
+        local children = currentObj:GetChildren()
+        local itemCount = 0
+        
+        -- Ordenar: pastas primeiro, depois arquivos
+        local folders = {}
+        local files = {}
+        
+        for _, child in ipairs(children) do
+            if itemCount < MAX_ITEMS then
+                if child:IsA("Folder") or child:IsA("Model") then
+                    table.insert(folders, child)
+                else
+                    table.insert(files, child)
+                end
+                itemCount = itemCount + 1
+            else
+                break
+            end
+        end
+        
+        -- Adicionar pastas
+        for i, folder in ipairs(folders) do
+            createListItem(folder.Name, folder, i, true)
+        end
+        
+        -- Adicionar arquivos
+        for i, file in ipairs(files) do
+            createListItem(file.Name, file, #folders + i, false)
+        end
+        
+        -- Ajustar tamanho do content frame
+        local totalHeight = (#folders + #files) * 35
+        if contentFrame then
+            contentFrame.Size = UDim2.new(1, 0, 0, totalHeight)
+        end
+        if scrollFrame then
+            scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
         end
     end
-
-    -- Adicionar pastas
-    for i, folder in ipairs(folders) do
-        createListItem(folder.Name, folder, i, true)
+    
+    -- Função para criar botão de toggle
+    local function createToggleButton()
+        local toggleButton = Instance.new("TextButton")
+        toggleButton.Size = UDim2.new(0.1, 0, 0.08, 0)
+        toggleButton.Position = UDim2.new(0.9, 0, 0.02, 0)
+        toggleButton.Text = "📱"
+        toggleButton.TextColor3 = Color3.new(1, 1, 1)
+        toggleButton.TextScaled = true
+        toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 160)
+        toggleButton.BackgroundTransparency = 0.3
+        toggleButton.Parent = screenGui
+        
+        local isVisible = true
+        
+        toggleButton.MouseButton1Click:Connect(function()
+            isVisible = not isVisible
+            if mainFrame then
+                mainFrame.Visible = isVisible
+            end
+            toggleButton.Text = isVisible and "📱" or "👁️"
+        end)
+        
+        return toggleButton
     end
-
-    -- Adicionar arquivos
-    for i, file in ipairs(files) do
-        createListItem(file.Name, file, #folders + i, false)
+    
+    -- Inicialização principal
+    local function initialize()
+        -- Criar interface
+        createMobileExplorer()
+        updateExplorerView()
+        createToggleButton()
+        
+        print("📱 Mobile Explorer carregado com sucesso!")
+        print("• Use 📱 para mostrar/ocultar")
+        print("• Toque em 📁 para expandir pastas")
+        print("• Use ⬅️ para voltar")
+        print("• Use 🔄 para atualizar")
     end
+    
+    -- Iniciar após um pequeno delay
+    wait(2)
+    initialize()
+    
+end)
 
-    -- Ajustar tamanho do content frame
-    local totalHeight = (#folders + #files) * 40
-    contentFrame.Size = UDim2.new(1, 0, 0, totalHeight)
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
-
-    -- Adicionar contador se houver muitos itens
-    if #children > MAX_ITEMS then
-        local countFrame = Instance.new("Frame")
-        countFrame.Size = UDim2.new(1, 0, 0, 30)
-        countFrame.Position = UDim2.new(0, 0, 0, totalHeight)
-        countFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        countFrame.Parent = contentFrame
-
-        local countLabel = Instance.new("TextLabel")
-        countLabel.Size = UDim2.new(1, 0, 1, 0)
-        countLabel.Text = "... e mais " .. (#children - MAX_ITEMS) .. " itens"
-        countLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        countLabel.TextScaled = true
-        countLabel.BackgroundTransparency = 1
-        countLabel.Parent = countFrame
-    end
+-- Tratamento de erro
+if not success then
+    warn("Erro ao carregar Mobile Explorer: " .. tostring(error))
 end
-
--- Função para criar botão de toggle
-local function createToggleButton()
-    local toggleButton = Instance.new("TextButton")
-    toggleButton.Size = UDim2.new(0.1, 0, 0.08, 0)
-    toggleButton.Position = UDim2.new(0.9, 0, 0.02, 0)
-    toggleButton.Text = "📱"
-    toggleButton.TextColor3 = Color3.new(1, 1, 1)
-    toggleButton.TextScaled = true
-    toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 160)
-    toggleButton.BackgroundTransparency = 0.3
-    toggleButton.Parent = screenGui
-
-    local isVisible = true
-
-    toggleButton.MouseButton1Click:Connect(function()
-        isVisible = not isVisible
-        mainFrame.Visible = isVisible
-        toggleButton.Text = isVisible and "📱" : "👁️"
-    end)
-
-    return toggleButton
-end
-
--- Inicialização
-local function initialize()
-    createMobileExplorer()
-    updateExplorerView()
-    createToggleButton()
-
-    -- Atualização automática
-    while true do
-        task.wait(REFRESH_RATE)
-        if mainFrame and mainFrame.Visible then
-            updateExplorerView()
-        end
-    end
-end
-
--- Iniciar
-task.spawn(initialize)
-
-print("📱 Mobile Explorer carregado!")
-print("• Use 📱 para mostrar/ocultar")
-print("• Toque em 📁 para expandir pastas")
-print("• Use ⬅️ para voltar")
-print("• Use 🔄 para atualizar")
