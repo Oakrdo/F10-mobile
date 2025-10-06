@@ -1,246 +1,307 @@
---[[
-    EXPLORER MOBILE - SUPER SIMPLES
-    Versão garantida para funcionar
-]]
+-- Mobile Explorer Viewer para Roblox
+-- Por: DeepSeek-R1
 
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local Player = Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
--- Criar GUI básica
-local gui = Instance.new("ScreenGui")
-gui.Name = "SimpleExplorer"
-gui.Parent = player:WaitForChild("PlayerGui")
+-- Configurações
+local MAX_ITEMS = 50  -- Máximo de itens para mostrar
+local REFRESH_RATE = 5  -- Segundos entre atualizações
 
--- Botão principal (VERDE GRANDE)
-local mainButton = Instance.new("TextButton")
-mainButton.Size = UDim2.new(0, 150, 0, 60)
-mainButton.Position = UDim2.new(0, 20, 0, 20)
-mainButton.Text = "📁 ABRIR EXPLORER"
-mainButton.TextColor3 = Color3.new(1, 1, 1)  -- BRANCO
-mainButton.BackgroundColor3 = Color3.new(0, 0.6, 0)  -- VERDE
-mainButton.TextSize = 16
-mainButton.Font = Enum.Font.SourceSansBold
-mainButton.Parent = gui
+-- Variáveis
+local screenGui, mainFrame, contentFrame, scrollFrame
+local currentPath = {"workspace"}
+local objectCache = {}
 
--- Janela principal
-local mainWindow = Instance.new("Frame")
-mainWindow.Size = UDim2.new(0, 350, 0, 500)
-mainWindow.Position = UDim2.new(0.5, -175, 0.5, -250)
-mainWindow.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)  -- PRETO
-mainWindow.BorderSizePixel = 2
-mainWindow.BorderColor3 = Color3.new(1, 1, 0)  -- AMARELO
-mainWindow.Visible = false
-mainWindow.Parent = gui
+-- Função para criar a GUI móvel
+local function createMobileExplorer()
+    -- ScreenGui principal
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "MobileExplorer"
+    screenGui.Parent = Player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
 
--- Título
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 40)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.Text = "🔍 EXPLORER DO JOGO"
-title.TextColor3 = Color3.new(1, 1, 0)  -- AMARELO
-title.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)  -- CINZA ESCURO
-title.TextSize = 18
-title.Font = Enum.Font.SourceSansBold
-title.Parent = mainWindow
+    -- Frame principal
+    mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0.9, 0, 0.8, 0)
+    mainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    mainFrame.BackgroundTransparency = 0.1
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = screenGui
 
--- Área de conteúdo com scroll
-local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, -10, 1, -100)
-scrollFrame.Position = UDim2.new(0, 5, 0, 45)
-scrollFrame.BackgroundColor3 = Color3.new(0.05, 0.05, 0.05)  -- PRETO MAIS ESCURO
-scrollFrame.ScrollBarThickness = 10
-scrollFrame.Parent = mainWindow
+    -- Barra de título
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0.08, 0)
+    titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = mainFrame
 
--- Container dos itens
-local contentFrame = Instance.new("Frame")
-contentFrame.Size = UDim2.new(1, 0, 0, 0)
-contentFrame.BackgroundTransparency = 1
-contentFrame.Parent = scrollFrame
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    titleLabel.Position = UDim2.new(0.02, 0, 0, 0)
+    titleLabel.Text = "📱 MOBILE EXPLORER"
+    titleLabel.TextColor3 = Color3.new(1, 1, 1)
+    titleLabel.TextScaled = true
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Font = Enum.Font.SourceSansBold
+    titleLabel.Parent = titleBar
 
--- Botão fechar (VERMELHO)
-local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 120, 0, 40)
-closeButton.Position = UDim2.new(0.5, -60, 1, -50)
-closeButton.Text = "❌ FECHAR"
-closeButton.TextColor3 = Color3.new(1, 1, 1)  -- BRANCO
-closeButton.BackgroundColor3 = Color3.new(0.8, 0.1, 0.1)  -- VERMELHO
-closeButton.TextSize = 16
-closeButton.Font = Enum.Font.SourceSansBold
-closeButton.Parent = mainWindow
+    -- Botão de refresh
+    local refreshButton = Instance.new("TextButton")
+    refreshButton.Size = UDim2.new(0.14, 0, 0.8, 0)
+    refreshButton.Position = UDim2.new(0.72, 0, 0.1, 0)
+    refreshButton.Text = "🔄"
+    refreshButton.TextColor3 = Color3.new(1, 1, 1)
+    refreshButton.TextScaled = true
+    refreshButton.BackgroundColor3 = Color3.fromRGB(80, 160, 220)
+    refreshButton.Parent = titleBar
 
--- Função para mostrar objetos
-local function showObjects()
-    print("🔄 Atualizando explorer...")
-    
-    -- Limpar conteúdo anterior
-    contentFrame:ClearAllChildren()
-    
-    local yPosition = 0
-    
-    -- WORKSPACE
-    local wsLabel = Instance.new("TextLabel")
-    wsLabel.Size = UDim2.new(1, 0, 0, 35)
-    wsLabel.Position = UDim2.new(0, 0, 0, yPosition)
-    wsLabel.Text = "🎯 WORKSPACE"
-    wsLabel.TextColor3 = Color3.new(1, 1, 0)  -- AMARELO
-    wsLabel.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)  -- CINZA
-    wsLabel.TextSize = 16
-    wsLabel.Font = Enum.Font.SourceSansBold
-    wsLabel.Parent = contentFrame
-    yPosition = yPosition + 35
-    
-    -- Listar objetos do Workspace
-    for i, obj in pairs(workspace:GetChildren()) do
-        if i <= 30 then  -- Limitar para não travar
-            local objFrame = Instance.new("Frame")
-            objFrame.Size = UDim2.new(1, 0, 0, 25)
-            objFrame.Position = UDim2.new(0, 0, 0, yPosition)
-            objFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)  -- CINZA ESCURO
-            
-            local objName = Instance.new("TextLabel")
-            objName.Size = UDim2.new(1, -10, 1, 0)
-            objName.Position = UDim2.new(0, 10, 0, 0)
-            objName.Text = "📄 " .. obj.Name
-            objName.TextColor3 = Color3.new(1, 1, 1)  -- BRANCO
-            objName.TextXAlignment = Enum.TextXAlignment.Left
-            objName.BackgroundTransparency = 1
-            objName.TextSize = 14
-            objName.Parent = objFrame
-            
-            local objClass = Instance.new("TextLabel")
-            objClass.Size = UDim2.new(0.4, 0, 1, 0)
-            objClass.Position = UDim2.new(0.6, 0, 0, 0)
-            objClass.Text = "(" .. obj.ClassName .. ")"
-            objClass.TextColor3 = Color3.new(1, 1, 0)  -- AMARELO
-            objClass.TextXAlignment = Enum.TextXAlignment.Right
-            objClass.BackgroundTransparency = 1
-            objClass.TextSize = 12
-            objClass.Parent = objFrame
-            
-            objFrame.Parent = contentFrame
-            yPosition = yPosition + 25
+    -- Botão de voltar
+    local backButton = Instance.new("TextButton")
+    backButton.Size = UDim2.new(0.14, 0, 0.8, 0)
+    backButton.Position = UDim2.new(0.86, 0, 0.1, 0)
+    backButton.Text = "⬅️"
+    backButton.TextColor3 = Color3.new(1, 1, 1)
+    backButton.TextScaled = true
+    backButton.BackgroundColor3 = Color3.fromRGB(220, 80, 80)
+    backButton.Parent = titleBar
+
+    -- Barra de caminho
+    local pathBar = Instance.new("Frame")
+    pathBar.Size = UDim2.new(1, 0, 0.06, 0)
+    pathBar.Position = UDim2.new(0, 0, 0.08, 0)
+    pathBar.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    pathBar.BorderSizePixel = 0
+    pathBar.Parent = mainFrame
+
+    local pathLabel = Instance.new("TextLabel")
+    pathLabel.Size = UDim2.new(0.98, 0, 1, 0)
+    pathLabel.Position = UDim2.new(0.01, 0, 0, 0)
+    pathLabel.Text = "workspace"
+    pathLabel.TextColor3 = Color3.new(0.8, 0.8, 1)
+    pathLabel.TextScaled = true
+    pathLabel.TextXAlignment = Enum.TextXAlignment.Left
+    pathLabel.BackgroundTransparency = 1
+    pathLabel.Parent = pathBar
+
+    -- Frame de conteúdo com scrolling
+    scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, 0, 0.86, 0)
+    scrollFrame.Position = UDim2.new(0, 0, 0.14, 0)
+    scrollFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 8
+    scrollFrame.Parent = mainFrame
+
+    -- Lista de objetos
+    contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, 0, 0, 0)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = scrollFrame
+
+    -- Conectar botões
+    refreshButton.MouseButton1Click:Connect(function()
+        updateExplorerView()
+    end)
+
+    backButton.MouseButton1Click:Connect(function()
+        if #currentPath > 1 then
+            table.remove(currentPath)
+            updateExplorerView()
         end
-    end
-    
-    -- LIGHTING
-    yPosition = yPosition + 10
-    local lightLabel = Instance.new("TextLabel")
-    lightLabel.Size = UDim2.new(1, 0, 0, 35)
-    lightLabel.Position = UDim2.new(0, 0, 0, yPosition)
-    lightLabel.Text = "💡 LIGHTING"
-    lightLabel.TextColor3 = Color3.new(1, 1, 0)  -- AMARELO
-    lightLabel.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)  -- CINZA
-    lightLabel.TextSize = 16
-    lightLabel.Font = Enum.Font.SourceSansBold
-    lightLabel.Parent = contentFrame
-    yPosition = yPosition + 35
-    
-    -- Listar objetos do Lighting
-    for i, obj in pairs(game.Lighting:GetChildren()) do
-        if i <= 20 then
-            local objFrame = Instance.new("Frame")
-            objFrame.Size = UDim2.new(1, 0, 0, 25)
-            objFrame.Position = UDim2.new(0, 0, 0, yPosition)
-            objFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)  -- CINZA ESCURO
-            
-            local objName = Instance.new("TextLabel")
-            objName.Size = UDim2.new(1, -10, 1, 0)
-            objName.Position = UDim2.new(0, 10, 0, 0)
-            objName.Text = "📄 " .. obj.Name
-            objName.TextColor3 = Color3.new(1, 1, 1)  -- BRANCO
-            objName.TextXAlignment = Enum.TextXAlignment.Left
-            objName.BackgroundTransparency = 1
-            objName.TextSize = 14
-            objName.Parent = objFrame
-            
-            local objClass = Instance.new("TextLabel")
-            objClass.Size = UDim2.new(0.4, 0, 1, 0)
-            objClass.Position = UDim2.new(0.6, 0, 0, 0)
-            objClass.Text = "(" .. obj.ClassName .. ")"
-            objClass.TextColor3 = Color3.new(1, 1, 0)  -- AMARELO
-            objClass.TextXAlignment = Enum.TextXAlignment.Right
-            objClass.BackgroundTransparency = 1
-            objClass.TextSize = 12
-            objClass.Parent = objFrame
-            
-            objFrame.Parent = contentFrame
-            yPosition = yPosition + 25
-        end
-    end
-    
-    -- REPLICATED STORAGE
-    yPosition = yPosition + 10
-    local rsLabel = Instance.new("TextLabel")
-    rsLabel.Size = UDim2.new(1, 0, 0, 35)
-    rsLabel.Position = UDim2.new(0, 0, 0, yPosition)
-    rsLabel.Text = "📦 REPLICATED STORAGE"
-    rsLabel.TextColor3 = Color3.new(1, 1, 0)  -- AMARELO
-    rsLabel.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)  -- CINZA
-    rsLabel.TextSize = 16
-    rsLabel.Font = Enum.Font.SourceSansBold
-    rsLabel.Parent = contentFrame
-    yPosition = yPosition + 35
-    
-    -- Listar objetos do ReplicatedStorage
-    for i, obj in pairs(game.ReplicatedStorage:GetChildren()) do
-        if i <= 15 then
-            local objFrame = Instance.new("Frame")
-            objFrame.Size = UDim2.new(1, 0, 0, 25)
-            objFrame.Position = UDim2.new(0, 0, 0, yPosition)
-            objFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)  -- CINZA ESCURO
-            
-            local objName = Instance.new("TextLabel")
-            objName.Size = UDim2.new(1, -10, 1, 0)
-            objName.Position = UDim2.new(0, 10, 0, 0)
-            objName.Text = "📄 " .. obj.Name
-            objName.TextColor3 = Color3.new(1, 1, 1)  -- BRANCO
-            objName.TextXAlignment = Enum.TextXAlignment.Left
-            objName.BackgroundTransparency = 1
-            objName.TextSize = 14
-            objName.Parent = objFrame
-            
-            local objClass = Instance.new("TextLabel")
-            objClass.Size = UDim2.new(0.4, 0, 1, 0)
-            objClass.Position = UDim2.new(0.6, 0, 0, 0)
-            objClass.Text = "(" .. obj.ClassName .. ")"
-            objClass.TextColor3 = Color3.new(1, 1, 0)  -- AMARELO
-            objClass.TextXAlignment = Enum.TextXAlignment.Right
-            objClass.BackgroundTransparency = 1
-            objClass.TextSize = 12
-            objClass.Parent = objFrame
-            
-            objFrame.Parent = contentFrame
-            yPosition = yPosition + 25
-        end
-    end
-    
-    -- Ajustar scroll
-    contentFrame.Size = UDim2.new(1, 0, 0, yPosition)
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPosition)
-    
-    print("✅ Explorer atualizado! " .. yPosition .. " pixels de conteúdo")
+    end)
+
+    return {
+        MainFrame = mainFrame,
+        PathLabel = pathLabel,
+        ScrollFrame = scrollFrame,
+        ContentFrame = contentFrame
+    }
 end
 
--- Conexões dos botões
-mainButton.MouseButton1Click:Connect(function()
-    mainWindow.Visible = not mainWindow.Visible
-    if mainWindow.Visible then
-        showObjects()
-        mainButton.Text = "📁 FECHAR EXPLORER"
-        mainButton.BackgroundColor3 = Color3.new(0.8, 0.1, 0.1)  -- VERMELHO
-    else
-        mainButton.Text = "📁 ABRIR EXPLORER"
-        mainButton.BackgroundColor3 = Color3.new(0, 0.6, 0)  -- VERDE
+-- Função para obter o objeto atual baseado no caminho
+local function getCurrentObject()
+    local current = workspace
+    
+    for i = 2, #currentPath do
+        local nextObj = current:FindFirstChild(currentPath[i])
+        if nextObj then
+            current = nextObj
+        else
+            break
+        end
     end
-end)
+    
+    return current
+end
 
-closeButton.MouseButton1Click:Connect(function()
-    mainWindow.Visible = false
-    mainButton.Text = "📁 ABRIR EXPLORER"
-    mainButton.BackgroundColor3 = Color3.new(0, 0.6, 0)  -- VERDE
-end)
+-- Função para criar item da lista
+local function createListItem(name, object, index, isFolder)
+    local itemFrame = Instance.new("Frame")
+    itemFrame.Size = UDim2.new(1, 0, 0, 40)
+    itemFrame.Position = UDim2.new(0, 0, 0, (index-1) * 40)
+    itemFrame.BackgroundColor3 = index % 2 == 0 and Color3.fromRGB(45, 45, 55) or Color3.fromRGB(35, 35, 45)
+    itemFrame.BorderSizePixel = 0
+    itemFrame.Parent = contentFrame
 
--- Mensagem inicial
-print("🎯 EXPLORER SIMPLES CARREGADO!")
-print("📁 Clique no botão verde para abrir")
-print("📊 Mostrando: Workspace, Lighting e ReplicatedStorage")
+    local iconLabel = Instance.new("TextLabel")
+    iconLabel.Size = UDim2.new(0.1, 0, 1, 0)
+    iconLabel.Position = UDim2.new(0, 0, 0, 0)
+    iconLabel.Text = isFolder and "📁" or "📄"
+    iconLabel.TextColor3 = isFolder and Color3.fromRGB(100, 180, 255) or Color3.fromRGB(200, 200, 200)
+    iconLabel.TextScaled = true
+    iconLabel.BackgroundTransparency = 1
+    iconLabel.Parent = itemFrame
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(0.6, 0, 1, 0)
+    nameLabel.Position = UDim2.new(0.1, 0, 0, 0)
+    nameLabel.Text = name
+    nameLabel.TextColor3 = Color3.new(1, 1, 1)
+    nameLabel.TextScaled = true
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Parent = itemFrame
+
+    local typeLabel = Instance.new("TextLabel")
+    typeLabel.Size = UDim2.new(0.3, 0, 1, 0)
+    typeLabel.Position = UDim2.new(0.7, 0, 0, 0)
+    typeLabel.Text = object.ClassName
+    typeLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    typeLabel.TextScaled = true
+    typeLabel.BackgroundTransparency = 1
+    typeLabel.Parent = itemFrame
+
+    -- Botão de ação
+    if isFolder then
+        local expandButton = Instance.new("TextButton")
+        expandButton.Size = UDim2.new(1, 0, 1, 0)
+        expandButton.BackgroundTransparency = 1
+        expandButton.Text = ""
+        expandButton.Parent = itemFrame
+        
+        expandButton.MouseButton1Click:Connect(function()
+            table.insert(currentPath, name)
+            updateExplorerView()
+        end)
+    end
+
+    return itemFrame
+end
+
+-- Função para atualizar a visualização
+local function updateExplorerView()
+    -- Limpar conteúdo anterior
+    for _, child in ipairs(contentFrame:GetChildren()) do
+        child:Destroy()
+    end
+
+    local currentObj = getCurrentObject()
+    local gui = createMobileExplorer()
+    
+    -- Atualizar barra de caminho
+    gui.PathLabel.Text = table.concat(currentPath, " > ")
+
+    -- Obter filhos do objeto atual
+    local children = currentObj:GetChildren()
+    local itemCount = 0
+
+    -- Ordenar: pastas primeiro, depois arquivos
+    local folders = {}
+    local files = {}
+
+    for _, child in ipairs(children) do
+        if itemCount < MAX_ITEMS then
+            if child:IsA("Folder") or child:IsA("Model") then
+                table.insert(folders, child)
+            else
+                table.insert(files, child)
+            end
+            itemCount = itemCount + 1
+        else
+            break
+        end
+    end
+
+    -- Adicionar pastas
+    for i, folder in ipairs(folders) do
+        createListItem(folder.Name, folder, i, true)
+    end
+
+    -- Adicionar arquivos
+    for i, file in ipairs(files) do
+        createListItem(file.Name, file, #folders + i, false)
+    end
+
+    -- Ajustar tamanho do content frame
+    local totalHeight = (#folders + #files) * 40
+    contentFrame.Size = UDim2.new(1, 0, 0, totalHeight)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+
+    -- Adicionar contador se houver muitos itens
+    if #children > MAX_ITEMS then
+        local countFrame = Instance.new("Frame")
+        countFrame.Size = UDim2.new(1, 0, 0, 30)
+        countFrame.Position = UDim2.new(0, 0, 0, totalHeight)
+        countFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+        countFrame.Parent = contentFrame
+
+        local countLabel = Instance.new("TextLabel")
+        countLabel.Size = UDim2.new(1, 0, 1, 0)
+        countLabel.Text = "... e mais " .. (#children - MAX_ITEMS) .. " itens"
+        countLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        countLabel.TextScaled = true
+        countLabel.BackgroundTransparency = 1
+        countLabel.Parent = countFrame
+    end
+end
+
+-- Função para criar botão de toggle
+local function createToggleButton()
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(0.1, 0, 0.08, 0)
+    toggleButton.Position = UDim2.new(0.9, 0, 0.02, 0)
+    toggleButton.Text = "📱"
+    toggleButton.TextColor3 = Color3.new(1, 1, 1)
+    toggleButton.TextScaled = true
+    toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 160)
+    toggleButton.BackgroundTransparency = 0.3
+    toggleButton.Parent = screenGui
+
+    local isVisible = true
+
+    toggleButton.MouseButton1Click:Connect(function()
+        isVisible = not isVisible
+        mainFrame.Visible = isVisible
+        toggleButton.Text = isVisible and "📱" : "👁️"
+    end)
+
+    return toggleButton
+end
+
+-- Inicialização
+local function initialize()
+    createMobileExplorer()
+    updateExplorerView()
+    createToggleButton()
+
+    -- Atualização automática
+    while true do
+        task.wait(REFRESH_RATE)
+        if mainFrame and mainFrame.Visible then
+            updateExplorerView()
+        end
+    end
+end
+
+-- Iniciar
+task.spawn(initialize)
+
+print("📱 Mobile Explorer carregado!")
+print("• Use 📱 para mostrar/ocultar")
+print("• Toque em 📁 para expandir pastas")
+print("• Use ⬅️ para voltar")
+print("• Use 🔄 para atualizar")
