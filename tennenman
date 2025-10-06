@@ -11,23 +11,24 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 
 -- Variáveis
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local rootPart = character:WaitForChild("HumanoidRootPart")
+local character = player.Character
+local humanoid = character and character:WaitForChild("Humanoid")
+local rootPart = character and character:WaitForChild("HumanoidRootPart")
 
 -- Configurações
-local FARM_RANGE = 500  -- Aumentado para garantir
+local FARM_RANGE = 500
 local ATTACK_RANGE = 15
-local TELEPORT_OFFSET = 3  -- Reduzido para ficar na frente
-local ATTACK_DELAY = 0.5   -- Aumentado para evitar spam
+local TELEPORT_OFFSET = 3
+local ATTACK_DELAY = 0.5
 local IS_FARMING = false
 local currentTarget = nil
 local tennenmanNPCs = {}
 
--- GUI
+-- Criar GUI que não reseta
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TennenmanFarm"
 screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false  -- Isso impede que o menu suma ao morrer
 
 -- Frame principal
 local mainFrame = Instance.new("Frame")
@@ -95,9 +96,27 @@ searchButton.TextColor3 = Color3.new(1, 1, 1)
 searchButton.TextScaled = true
 searchButton.Parent = buttonFrame
 
+-- Função para atualizar referências do personagem
+local function updateCharacterReferences()
+    character = player.Character
+    if character then
+        humanoid = character:WaitForChild("Humanoid")
+        rootPart = character:WaitForChild("HumanoidRootPart")
+        print("✅ Personagem atualizado após respawn")
+    end
+end
+
 -- Função para encontrar NPCs Tennenman
 local function findTennenmanNPCs()
     tennenmanNPCs = {}
+    
+    -- Atualizar referências do personagem
+    updateCharacterReferences()
+    
+    if not character or not rootPart then
+        infoLabel.Text = "❌ Personagem não carregado"
+        return 0
+    end
     
     -- Procurar na estrutura correta: Map → NPCs → Tennenman
     local mapFolder = Workspace:FindFirstChild("Map")
@@ -139,10 +158,10 @@ local function findTennenmanNPCs()
         return 0
     end
     
-    -- Calcular distância (usando magnitude correta)
+    -- Calcular distância
     local distance = (rootPartTennenman.Position - rootPart.Position).Magnitude
     
-    -- Sempre adicionar, independente da distância (para debug)
+    -- Sempre adicionar, independente da distância
     table.insert(tennenmanNPCs, {
         Model = tennenmanModel,
         RootPart = rootPartTennenman,
@@ -159,7 +178,10 @@ end
 
 -- Função para teleportar na FRENTE do NPC
 local function teleportToFront(targetPosition, targetRootPart)
-    if not rootPart or not targetRootPart then return end
+    if not rootPart or not targetRootPart then 
+        updateCharacterReferences()
+        if not rootPart then return end
+    end
     
     -- Calcular direção do NPC
     local npcLookVector = targetRootPart.CFrame.LookVector
@@ -170,23 +192,21 @@ local function teleportToFront(targetPosition, targetRootPart)
     rootPart.CFrame = lookAtCFrame
     
     print("🚀 Teleportado para FRENTE do NPC")
-    print("🎯 Posição NPC: " .. tostring(targetPosition))
-    print("📍 Minha posição: " .. tostring(positionInFront))
 end
 
--- Função para simular ataque (com menos spam)
+-- Função para simular ataque
 local function performAttack()
     -- Pequeno delay antes do ataque
     wait(0.1)
     
-    -- Tecla E (PC) - apenas uma vez
+    -- Tecla E (PC)
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
         wait(0.05)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
     end)
     
-    -- Botão Combat (Mobile) - apenas uma vez
+    -- Botão Combat (Mobile)
     pcall(function()
         for _, gui in pairs(player.PlayerGui:GetDescendants()) do
             if gui:IsA("TextButton") and (
@@ -213,19 +233,20 @@ local function isTargetValid(target)
     return true
 end
 
--- Função principal de farm (sem congelar a tela)
+-- Função principal de farm
 local function farmLoop()
     while IS_FARMING do
+        -- Atualizar referências do personagem a cada ciclo
+        updateCharacterReferences()
+        
         if not character or not rootPart then
-            character = player.Character
-            if character then
-                rootPart = character:FindFirstChild("HumanoidRootPart")
-            end
+            statusLabel.Text = "🟡 AGUARDANDO RESPAWN..."
+            statusLabel.TextColor3 = Color3.new(1, 1, 0.5)
             wait(1)
             continue
         end
         
-        -- Buscar NPCs (sem spam)
+        -- Buscar NPCs
         local found = findTennenmanNPCs()
         
         if found > 0 then
@@ -238,15 +259,16 @@ local function farmLoop()
                 
                 -- Teleportar para FRENTE do Tennenman
                 teleportToFront(currentTarget.Position, currentTarget.RootPart)
-                wait(0.2)  -- Delay após teleport
+                wait(0.2)
                 
-                -- Atacar (apenas uma vez por ciclo)
+                -- Atacar
                 performAttack()
                 
                 -- Virar para o alvo
-                rootPart.CFrame = CFrame.new(rootPart.Position, currentTarget.Position)
+                if rootPart and currentTarget.Position then
+                    rootPart.CFrame = CFrame.new(rootPart.Position, currentTarget.Position)
+                end
                 
-                -- Delay maior entre ciclos para evitar spam
                 wait(ATTACK_DELAY)
                 
             else
@@ -254,7 +276,7 @@ local function farmLoop()
                 statusLabel.Text = "🟡 TENNENMAN MORREU"
                 statusLabel.TextColor3 = Color3.new(1, 1, 0.5)
                 tennenmanNPCs = {}
-                wait(3) -- Esperar respawn
+                wait(3)
             end
             
         else
@@ -263,7 +285,6 @@ local function farmLoop()
             wait(1)
         end
         
-        -- Usar RunService para não congelar a tela
         RunService.Heartbeat:Wait()
     end
 end
@@ -278,7 +299,7 @@ toggleButton.MouseButton1Click:Connect(function()
         statusLabel.Text = "🟢 INICIANDO..."
         statusLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
         
-        -- Iniciar loop de farm em uma thread separada
+        -- Iniciar loop de farm em thread separada
         spawn(farmLoop)
         
     else
@@ -302,21 +323,29 @@ searchButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Reconectar quando o personagem morrer
+-- Sistema de respawn automático
 player.CharacterAdded:Connect(function(newChar)
-    character = newChar
-    humanoid = character:WaitForChild("Humanoid")
-    rootPart = character:WaitForChild("HumanoidRootPart")
+    print("🎮 Personagem respawnou - atualizando referências...")
     
+    -- Pequeno delay para garantir que o personagem está totalmente carregado
+    wait(1)
+    
+    -- Atualizar referências
+    updateCharacterReferences()
+    
+    -- Se estava farmando, continuar automaticamente
     if IS_FARMING then
-        wait(3)
+        statusLabel.Text = "🟢 RETOMANDO FARM..."
+        statusLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
+        wait(2)  -- Esperar um pouco mais após respawn
         spawn(farmLoop)
     end
 end)
 
 -- Inicialização
 print("🐉 Auto Farm Tennenman carregado!")
-print("Estrutura: Map → NPCs → Tennenman")
+print("✅ Menu configurado para NÃO desaparecer ao morrer")
+print("✅ Sistema de respawn automático ativado")
 findTennenmanNPCs()
 
 print("▶ INICIAR - Começa o farm automático")
