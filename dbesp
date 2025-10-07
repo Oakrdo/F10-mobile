@@ -1,0 +1,457 @@
+-- ESP para Esferas do Dragão - Dragon Ball Rage
+-- Por: DeepSeek-R1
+
+wait(2)
+
+-- Services
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- Variáveis
+local player = Players.LocalPlayer
+local IS_ESP_ACTIVE = false
+local dragonBalls = {}
+local espHandles = {}
+local currentTPIndex = 1
+
+-- Criar GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DragonBallESP"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+-- Frame principal
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0.4, 0, 0.25, 0)
+mainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 30, 30)
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- Título
+local title = Instance.new("TextLabel")
+title.Text = "🌟 ESP ESFERAS DO DRAGÃO"
+title.Size = UDim2.new(1, 0, 0.2, 0)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextScaled = true
+title.Font = Enum.Font.SourceSansBold
+title.Parent = mainFrame
+
+-- Status
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Text = "🔴 ESP DESLIGADO"
+statusLabel.Size = UDim2.new(1, 0, 0.2, 0)
+statusLabel.Position = UDim2.new(0, 0, 0.2, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
+statusLabel.TextScaled = true
+statusLabel.Parent = mainFrame
+
+-- Info
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Text = "Esferas: 0 | TP: 0/0"
+infoLabel.Size = UDim2.new(1, 0, 0.2, 0)
+infoLabel.Position = UDim2.new(0, 0, 0.4, 0)
+infoLabel.BackgroundTransparency = 1
+infoLabel.TextColor3 = Color3.new(0.8, 0.8, 1)
+infoLabel.TextScaled = true
+infoLabel.Parent = mainFrame
+
+-- Botões
+local buttonFrame = Instance.new("Frame")
+buttonFrame.Size = UDim2.new(1, 0, 0.4, 0)
+buttonFrame.Position = UDim2.new(0, 0, 0.6, 0)
+buttonFrame.BackgroundTransparency = 1
+buttonFrame.Parent = mainFrame
+
+-- Botão ESP
+local espButton = Instance.new("TextButton")
+espButton.Text = "🌟 LIGAR ESP"
+espButton.Size = UDim2.new(0.48, 0, 0.9, 0)
+espButton.Position = UDim2.new(0.01, 0, 0.05, 0)
+espButton.BackgroundColor3 = Color3.fromRGB(180, 80, 180)
+espButton.TextColor3 = Color3.new(1, 1, 1)
+espButton.TextScaled = true
+espButton.Parent = buttonFrame
+
+-- Botão TP para Esfera
+local tpButton = Instance.new("TextButton")
+tpButton.Text = "🚀 TP PRÓXIMA"
+tpButton.Size = UDim2.new(0.48, 0, 0.9, 0)
+tpButton.Position = UDim2.new(0.51, 0, 0.05, 0)
+tpButton.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+tpButton.TextColor3 = Color3.new(1, 1, 1)
+tpButton.TextScaled = true
+tpButton.Parent = buttonFrame
+
+-- Função MELHORADA para verificar se é uma Esfera do Dragão
+local function isDragonBall(model)
+    local name = tostring(model.Name)
+    
+    -- Verifica se é um GUID (começa com { e termina com })
+    if string.sub(name, 1, 1) == "{" and string.sub(name, -1) == "}" then
+        return true
+    end
+    
+    -- Ignora nomes que sabemos que não são esferas
+    local lowerName = string.lower(name)
+    if string.find(lowerName, "dragonshop") or 
+       string.find(lowerName, "explainer") or 
+       string.find(lowerName, "spawn") or
+       string.find(lowerName, "giver") or
+       string.find(lowerName, "npc") then
+        return false
+    end
+    
+    return false
+end
+
+-- Função MELHORADA para criar ESP de uma Esfera do Dragão
+local function createDragonBallESP(dragonBall)
+    if espHandles[dragonBall] then return end
+    
+    -- Encontrar uma parte para ancorar o ESP
+    local rootPart = dragonBall:FindFirstChild("HumanoidRootPart") or 
+                    dragonBall:FindFirstChild("Head") or 
+                    dragonBall:FindFirstChild("Torso") or 
+                    dragonBall:FindFirstChild("Part") or
+                    dragonBall:FindFirstChildWhichIsA("Part")
+    
+    if not rootPart then
+        -- Se não encontrar parte específica, usa o próprio modelo
+        rootPart = dragonBall
+    end
+    
+    -- BillboardGui para texto flutuante MAIOR
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "DragonBallESP"
+    billboard.Adornee = rootPart
+    billboard.Size = UDim2.new(0, 400, 0, 100) -- TEXTO MAIOR
+    billboard.StudsOffset = Vector3.new(0, 5, 0) -- MAIS ALTO
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 5000 -- VISÍVEL DE MUITO LONGE
+    billboard.ExtentsOffset = Vector3.new(0, 0, 0)
+    billboard.Parent = rootPart
+    
+    -- Texto da esfera MAIOR
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Text = "🌟 ESFERA DO DRAGÃO 🌟"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = Color3.new(1, 1, 0) -- Amarelo brilhante
+    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0) -- Contorno preto
+    textLabel.TextStrokeTransparency = 0 -- Contorno totalmente visível
+    textLabel.TextScaled = true
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextSize = 50 -- TEXTO GRANDE
+    textLabel.Parent = billboard
+    
+    -- Highlight MAIS BRILHANTE
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "DragonBallHighlight"
+    highlight.Adornee = dragonBall
+    highlight.FillColor = Color3.new(1, 1, 0)  -- Amarelo brilhante
+    highlight.OutlineColor = Color3.new(1, 0.3, 0)  -- Laranja forte
+    highlight.FillTransparency = 0.2 -- MENOS TRANSPARENTE
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = dragonBall
+    
+    -- Partícula de brilho
+    local attachment = Instance.new("Attachment")
+    attachment.Parent = rootPart
+    
+    local particleEmitter = Instance.new("ParticleEmitter")
+    particleEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    particleEmitter.Color = ColorSequence.new(Color3.new(1, 1, 0))
+    particleEmitter.Size = NumberSequence.new(1, 3)
+    particleEmitter.Transparency = NumberSequence.new(0, 1)
+    particleEmitter.Lifetime = NumberRange.new(1, 3)
+    particleEmitter.Rate = 20
+    particleEmitter.SpreadAngle = Vector2.new(45, 45)
+    particleEmitter.Parent = attachment
+    
+    espHandles[dragonBall] = {
+        Billboard = billboard,
+        Highlight = highlight,
+        Particle = particleEmitter,
+        Attachment = attachment
+    }
+    
+    print("🌟 ESP criado para: " .. dragonBall.Name)
+end
+
+-- Função para remover ESP de uma Esfera
+local function removeDragonBallESP(dragonBall)
+    if espHandles[dragonBall] then
+        if espHandles[dragonBall].Billboard then
+            espHandles[dragonBall].Billboard:Destroy()
+        end
+        if espHandles[dragonBall].Highlight then
+            espHandles[dragonBall].Highlight:Destroy()
+        end
+        if espHandles[dragonBall].Particle then
+            espHandles[dragonBall].Particle:Destroy()
+        end
+        if espHandles[dragonBall].Attachment then
+            espHandles[dragonBall].Attachment:Destroy()
+        end
+        espHandles[dragonBall] = nil
+    end
+end
+
+-- Função para limpar todos os ESPs
+local function clearAllESP()
+    for dragonBall, handles in pairs(espHandles) do
+        removeDragonBallESP(dragonBall)
+    end
+    espHandles = {}
+    print("🧹 Todos os ESPs removidos")
+end
+
+-- Função MELHORADA para encontrar Esferas do Dragão
+local function findDragonBalls()
+    dragonBalls = {}
+    
+    -- Busca ESPECÍFICA no caminho Map
+    local mapFolder = Workspace:FindFirstChild("Map")
+    if mapFolder then
+        -- Procura por TODOS os modelos no Map
+        for _, obj in pairs(mapFolder:GetDescendants()) do
+            if obj:IsA("Model") and isDragonBall(obj) then
+                local rootPartBall = obj:FindFirstChild("HumanoidRootPart") or 
+                                   obj:FindFirstChild("Head") or 
+                                   obj:FindFirstChild("Torso") or 
+                                   obj:FindFirstChild("Part") or
+                                   obj:FindFirstChildWhichIsA("Part")
+                
+                local position
+                if rootPartBall then
+                    position = rootPartBall.Position
+                else
+                    position = obj:GetPivot().Position
+                end
+                
+                table.insert(dragonBalls, {
+                    Model = obj,
+                    RootPart = rootPartBall or obj,
+                    Position = position,
+                    Name = obj.Name
+                })
+            end
+        end
+    end
+    
+    -- Busca em outras localizações como fallback
+    local otherLocations = {
+        Workspace:FindFirstChild("Items"),
+        Workspace:FindFirstChild("DragonBalls"),
+        Workspace:FindFirstChild("Esferas"),
+        Workspace
+    }
+    
+    for _, location in pairs(otherLocations) do
+        if location and location ~= mapFolder then
+            for _, obj in pairs(location:GetDescendants()) do
+                if obj:IsA("Model") and isDragonBall(obj) then
+                    -- Verifica se já não foi adicionada
+                    local alreadyAdded = false
+                    for _, existing in pairs(dragonBalls) do
+                        if existing.Model == obj then
+                            alreadyAdded = true
+                            break
+                        end
+                    end
+                    
+                    if not alreadyAdded then
+                        local rootPartBall = obj:FindFirstChild("HumanoidRootPart") or 
+                                           obj:FindFirstChild("Head") or 
+                                           obj:FindFirstChild("Torso") or 
+                                           obj:FindFirstChild("Part") or
+                                           obj:FindFirstChildWhichIsA("Part")
+                        
+                        local position
+                        if rootPartBall then
+                            position = rootPartBall.Position
+                        else
+                            position = obj:GetPivot().Position
+                        end
+                        
+                        table.insert(dragonBalls, {
+                            Model = obj,
+                            RootPart = rootPartBall or obj,
+                            Position = position,
+                            Name = obj.Name
+                        })
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Ordenar por distância do player
+    local character = player.Character
+    if character then
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            table.sort(dragonBalls, function(a, b)
+                local distA = (a.Position - humanoidRootPart.Position).Magnitude
+                local distB = (b.Position - humanoidRootPart.Position).Magnitude
+                return distA < distB
+            end)
+        end
+    end
+    
+    local count = #dragonBalls
+    infoLabel.Text = "Esferas: " .. count .. " | TP: " .. currentTPIndex .. "/" .. count
+    
+    if count > 0 then
+        print("🎯 Total de esferas encontradas: " .. count)
+    end
+    
+    -- Criar/atualizar ESP se estiver ativo
+    if IS_ESP_ACTIVE then
+        for _, dragonBall in pairs(dragonBalls) do
+            createDragonBallESP(dragonBall.Model)
+        end
+    end
+    
+    return count
+end
+
+-- Função MELHORADA para Teleportar para a PRÓXIMA Esfera
+local function teleportToNextDragonBall()
+    local character = player.Character
+    if not character then
+        print("❌ Personagem não encontrado")
+        return
+    end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then
+        print("❌ HumanoidRootPart não encontrado")
+        return
+    end
+    
+    -- Atualizar lista de esferas
+    findDragonBalls()
+    
+    if #dragonBalls == 0 then
+        print("❌ Nenhuma esfera encontrada para teleportar")
+        statusLabel.Text = "❌ NENHUMA ESFERA"
+        wait(2)
+        if IS_ESP_ACTIVE then
+            statusLabel.Text = "🟢 ESP ATIVADO"
+        else
+            statusLabel.Text = "🔴 ESP DESLIGADO"
+        end
+        return
+    end
+    
+    -- Avançar para a próxima esfera (cíclico)
+    local targetBall = dragonBalls[currentTPIndex]
+    
+    -- Teleportar para a esfera
+    local teleportPosition = targetBall.Position + Vector3.new(0, 5, 0) -- 5 studs acima
+    
+    -- Usar Tween para teleporte suave
+    local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(teleportPosition)})
+    tween:Play()
+    
+    print("🚀 Teleportando para esfera " .. currentTPIndex .. "/" .. #dragonBalls .. ": " .. targetBall.Name)
+    
+    -- Atualizar índice para a próxima esfera
+    currentTPIndex = currentTPIndex + 1
+    if currentTPIndex > #dragonBalls then
+        currentTPIndex = 1 -- Voltar para a primeira
+    end
+    
+    statusLabel.Text = "🚀 TP: " .. (currentTPIndex - 1) .. "/" .. #dragonBalls
+    infoLabel.Text = "Esferas: " .. #dragonBalls .. " | TP: " .. currentTPIndex .. "/" .. #dragonBalls
+    
+    wait(1)
+    
+    if IS_ESP_ACTIVE then
+        statusLabel.Text = "🟢 ESP ATIVADO"
+    else
+        statusLabel.Text = "🔴 ESP DESLIGADO"
+    end
+end
+
+-- Loop do ESP
+local function espLoop()
+    while IS_ESP_ACTIVE do
+        findDragonBalls()
+        wait(3) -- Atualizar a cada 3 segundos
+    end
+end
+
+-- Conectar botão ESP
+espButton.MouseButton1Click:Connect(function()
+    IS_ESP_ACTIVE = not IS_ESP_ACTIVE
+    
+    if IS_ESP_ACTIVE then
+        espButton.Text = "🌟 DESLIGAR ESP"
+        espButton.BackgroundColor3 = Color3.fromRGB(80, 180, 180)
+        statusLabel.Text = "🟢 ESP ATIVADO"
+        statusLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
+        
+        -- Encontrar e criar ESP para esferas existentes
+        findDragonBalls()
+        coroutine.wrap(espLoop)()
+        
+        print("🌟 ESP das Esferas do Dragão ATIVADO")
+        
+    else
+        espButton.Text = "🌟 LIGAR ESP"
+        espButton.BackgroundColor3 = Color3.fromRGB(180, 80, 180)
+        statusLabel.Text = "🔴 ESP DESLIGADO"
+        statusLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
+        
+        -- Limpar todos os ESPs
+        clearAllESP()
+        
+        print("🌟 ESP das Esferas do Dragão DESLIGADO")
+    end
+end)
+
+-- Conectar botão TP
+tpButton.MouseButton1Click:Connect(function()
+    teleportToNextDragonBall()
+end)
+
+-- Atualizar ESP quando novos objetos forem adicionados
+local function onDescendantAdded(descendant)
+    if IS_ESP_ACTIVE and descendant:IsA("Model") and isDragonBall(descendant) then
+        wait(0.5) -- Esperar um pouco para o objeto carregar completamente
+        findDragonBalls()
+    end
+end
+
+-- Conectar aos eventos de descendentes adicionados
+for _, location in pairs({Workspace:FindFirstChild("Map"), Workspace}) do
+    if location then
+        location.DescendantAdded:Connect(onDescendantAdded)
+    end
+end
+
+-- Reiniciar índice quando o personagem respawnar
+player.CharacterAdded:Connect(function()
+    wait(2)
+    currentTPIndex = 1
+    findDragonBalls()
+end)
+
+-- Inicialização
+print("🌟 ESP para Esferas do Dragão carregado!")
+print("🔍 Filtro melhorado - apenas GUIDs { }")
+print("🚀 TP CÍCLICO - clique para ir para a próxima esfera")
+print("📏 ESP VISÍVEL DE LONGE - texto grande e brilho intenso")
+
+-- Primeira busca inicial
+findDragonBalls()
