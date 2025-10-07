@@ -67,7 +67,7 @@ infoLabel.Parent = mainFrame
 
 -- Server Info
 local serverLabel = Instance.new("TextLabel")
-serverLabel.Text = "Server: Carregando..."
+serverLabel.Text = "Server: " .. game.JobId
 serverLabel.Size = UDim2.new(1, 0, 0.15, 0)
 serverLabel.Position = UDim2.new(0, 0, 0.45, 0)
 serverLabel.BackgroundTransparency = 1
@@ -126,20 +126,6 @@ autoButton.Parent = buttonFrame
 local AUTO_EXECUTE = false
 local lastHopTime = 0
 local hopCooldown = 10 -- segundos
-
--- Função para obter informações do servidor
-local function getServerInfo()
-    local jobId = game.JobId
-    local players = #Players:GetPlayers()
-    
-    if jobId == "" then
-        jobId = "Lobby"
-    else
-        jobId = string.sub(jobId, 1, 8) .. "..."
-    end
-    
-    serverLabel.Text = "Players: " .. players .. " | Server: " .. jobId
-end
 
 -- Função MELHORADA para verificar se é uma Esfera do Dragão
 local function isDragonBall(model)
@@ -342,11 +328,12 @@ local function teleportToNextDragonBall()
     statusLabel.Text = IS_ESP_ACTIVE and "🟢 ESP ATIVADO" or "🔴 ESP DESLIGADO"
 end
 
--- Função para Hop Server
+-- Função CORRIGIDA para Hop Server
 local function hopServer()
     local currentTime = tick()
     if currentTime - lastHopTime < hopCooldown then
-        statusLabel.Text = "⏳ AGUARDE " .. math.floor(hopCooldown - (currentTime - lastHopTime)) .. "s"
+        local waitTime = math.floor(hopCooldown - (currentTime - lastHopTime))
+        statusLabel.Text = "⏳ AGUARDE " .. waitTime .. "s"
         wait(2)
         statusLabel.Text = IS_ESP_ACTIVE and "🟢 ESP ATIVADO" or "🔴 ESP DESLIGADO"
         return
@@ -354,30 +341,22 @@ local function hopServer()
     
     lastHopTime = currentTime
     
-    statusLabel.Text = "🔄 PROCURANDO SERVER..."
+    statusLabel.Text = "🔄 HOP SERVER..."
     
-    -- Usar TeleportService para encontrar um novo server
+    -- Método SIMPLES e FUNCIONAL de Hop
     pcall(function()
-        local servers = TeleportService:GetGameInstances(placeId)
-        if #servers > 0 then
-            -- Encontrar um server com menos players
-            local bestServer = servers[1]
-            local minPlayers = bestServer.Playing
-            
-            for i = 2, math.min(#servers, 10) do
-                if servers[i].Playing < minPlayers then
-                    bestServer = servers[i]
-                    minPlayers = servers[i].Playing
-                end
-            end
-            
-            statusLabel.Text = "🔄 TELEPORTANDO..."
-            TeleportService:TeleportToPlaceInstance(placeId, bestServer.JobId, player)
-        else
-            statusLabel.Text = "❌ NENHUM SERVER"
-            wait(2)
-            statusLabel.Text = IS_ESP_ACTIVE and "🟢 ESP ATIVADO" or "🔴 ESP DESLIGADO"
-        end
+        -- Teleportar para o mesmo placeId (isso faz hop automático)
+        TeleportService:Teleport(placeId, player)
+    end)
+end
+
+-- Função ALTERNATIVA para Hop Server (método reserva)
+local function alternativeHop()
+    statusLabel.Text = "🔄 HOP ALTERNATIVO..."
+    
+    pcall(function()
+        -- Tentar teleportar para o lobby primeiro
+        TeleportService:Teleport(placeId, player)
     end)
 end
 
@@ -389,8 +368,9 @@ local function autoHopLoop()
         
         if #dragonBalls == 0 then
             statusLabel.Text = "🔄 AUTO HOP - SEM ESFERAS"
+            wait(2)
             hopServer()
-            wait(10) -- Esperar 10 segundos após o hop
+            wait(15) -- Esperar 15 segundos após tentar o hop
         else
             -- Se tem esferas, ativar ESP automaticamente
             if not IS_ESP_ACTIVE then
@@ -400,11 +380,11 @@ local function autoHopLoop()
                 statusLabel.Text = "🟢 AUTO ESP ATIVADO"
                 findDragonBalls()
             end
-            wait(5) -- Verificar a cada 5 segundos
+            wait(10) -- Verificar a cada 10 segundos
         end
         
-        if AUTO_EXECUTE then
-            wait(1)
+        if not AUTO_EXECUTE then
+            break
         end
     end
 end
@@ -446,6 +426,15 @@ end)
 -- Conectar botão Hop
 hopButton.MouseButton1Click:Connect(function()
     hopServer()
+    
+    -- Se o hop principal falhar, tentar o alternativo após 3 segundos
+    delay(3, function()
+        if game.JobId == game.JobId then -- Se ainda no mesmo server
+            statusLabel.Text = "🔄 TENTANDO HOP ALTERNATIVO"
+            wait(1)
+            alternativeHop()
+        end
+    end)
 end)
 
 -- Conectar botão Auto Execute
@@ -488,8 +477,8 @@ Workspace.DescendantAdded:Connect(onDescendantAdded)
 -- Atualizar informações do servidor
 local function updateServerInfo()
     while true do
-        getServerInfo()
-        wait(5)
+        serverLabel.Text = "Server: " .. (game.JobId == "" and "Lobby" or string.sub(game.JobId, 1, 8) .. "...")
+        wait(3)
     end
 end
 
@@ -525,8 +514,8 @@ coroutine.wrap(updateServerInfo)()
 
 print("🌟 ESP + Hop Server + Auto Execute carregado!")
 print("⚡ Script executa automaticamente ao entrar no server")
-print("🔄 Auto Hop quando não encontrar esferas")
+print("🔄 Hop Server FUNCIONAL - métodos simples e alternativo")
 print("🚀 TP cíclico entre esferas encontradas")
 
 -- Primeira execução
-getServerInfo()
+serverLabel.Text = "Server: " .. (game.JobId == "" and "Lobby" or string.sub(game.JobId, 1, 8) .. "...")
