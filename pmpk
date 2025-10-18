@@ -1,0 +1,259 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- Get local player
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Auto-farm variables
+local isFarming = false
+local currentPumpkinIndex = 1
+local pumpkinsList = {}
+local teleportSpeed = 1 -- seconds between teleports
+local lastTeleportTime = 0
+
+-- Create UI for mobile
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AutoFarmUI"
+screenGui.Parent = player.PlayerGui
+
+-- Create farm button
+local farmButton = Instance.new("TextButton")
+farmButton.Name = "FarmButton"
+farmButton.Size = UDim2.new(0, 150, 0, 60)
+farmButton.Position = UDim2.new(0.5, -75, 0, 20) -- Top center
+farmButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50) -- Red when stopped
+farmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+farmButton.Text = "🚀 INICIAR AUTOFARM"
+farmButton.TextScaled = true
+farmButton.Font = Enum.Font.GothamBold
+farmButton.Parent = screenGui
+
+-- Add corner
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = farmButton
+
+-- Add shadow
+local shadow = Instance.new("UIStroke")
+shadow.Color = Color3.fromRGB(0, 0, 0)
+shadow.Thickness = 3
+shadow.Parent = farmButton
+
+-- Speed control buttons
+local speedDownButton = Instance.new("TextButton")
+speedDownButton.Name = "SpeedDown"
+speedDownButton.Size = UDim2.new(0, 40, 0, 40)
+speedDownButton.Position = UDim2.new(0.3, -20, 0, 90)
+speedDownButton.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+speedDownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedDownButton.Text = "➖"
+speedDownButton.TextScaled = true
+speedDownButton.Font = Enum.Font.GothamBold
+speedDownButton.Parent = screenGui
+
+local speedUpButton = Instance.new("TextButton")
+speedUpButton.Name = "SpeedUp"
+speedUpButton.Size = UDim2.new(0, 40, 0, 40)
+speedUpButton.Position = UDim2.new(0.7, -20, 0, 90)
+speedUpButton.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+speedUpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedUpButton.Text = "➕"
+speedUpButton.TextScaled = true
+speedUpButton.Font = Enum.Font.GothamBold
+speedUpButton.Parent = screenGui
+
+-- Speed display
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Name = "SpeedLabel"
+speedLabel.Size = UDim2.new(0, 80, 0, 30)
+speedLabel.Position = UDim2.new(0.5, -40, 0, 140)
+speedLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedLabel.Text = "Velocidade: 1s"
+speedLabel.TextScaled = true
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.Parent = screenGui
+
+-- Status label
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "StatusLabel"
+statusLabel.Size = UDim2.new(0, 200, 0, 30)
+statusLabel.Position = UDim2.new(0.5, -100, 0, 180)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+statusLabel.Text = "Pumpkins: 0"
+statusLabel.TextScaled = true
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Parent = screenGui
+
+-- Add corners to speed buttons and label
+local smallCorner = Instance.new("UICorner")
+smallCorner.CornerRadius = UDim.new(0, 8)
+smallCorner.Parent = speedDownButton
+smallCorner:Clone().Parent = speedUpButton
+smallCorner:Clone().Parent = speedLabel
+
+-- Function to update speed display
+local function updateSpeedDisplay()
+    speedLabel.Text = "Velocidade: " .. teleportSpeed .. "s"
+end
+
+-- Function to find all pumpkins in the map
+local function updatePumpkinsList()
+    pumpkinsList = {}
+    
+    local mapFolder = workspace:FindFirstChild("Map")
+    if not mapFolder then return end
+    
+    local pumpkinFolder = mapFolder:FindFirstChild("Pumpkin")
+    if not pumpkinFolder then return end
+    
+    -- Fast direct search
+    for _, obj in ipairs(pumpkinFolder:GetChildren()) do
+        if obj:IsA("Model") and obj.Name == "Pumpkin" then
+            local primaryPart = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+            if primaryPart then
+                table.insert(pumpkinsList, {
+                    Model = obj,
+                    Position = primaryPart.Position
+                })
+            end
+        end
+    end
+    
+    -- Update status
+    statusLabel.Text = "Pumpkins: " .. #pumpkinsList
+end
+
+-- Controlled teleport function
+local function controlledTeleport()
+    if #pumpkinsList == 0 then
+        updatePumpkinsList()
+        return false
+    end
+    
+    local pumpkin = pumpkinsList[currentPumpkinIndex]
+    if pumpkin and pumpkin.Model.Parent then
+        -- Smooth teleport
+        rootPart.CFrame = CFrame.new(pumpkin.Position + Vector3.new(0, 3, 0))
+        
+        -- Move to next pumpkin
+        currentPumpkinIndex = currentPumpkinIndex + 1
+        if currentPumpkinIndex > #pumpkinsList then
+            currentPumpkinIndex = 1
+        end
+        return true
+    else
+        -- Pumpkin was removed, update list
+        updatePumpkinsList()
+        currentPumpkinIndex = 1
+        return false
+    end
+end
+
+-- Controlled farm loop
+local farmConnection
+local function startFarming()
+    if isFarming then return end
+    
+    isFarming = true
+    farmButton.BackgroundColor3 = Color3.fromRGB(50, 255, 50) -- Green when running
+    farmButton.Text = "⏹️ PARAR AUTOFARM"
+    
+    print("⚡ AUTOFARM INICIADO! Velocidade: " .. teleportSpeed .. "s")
+    
+    -- Initial update
+    updatePumpkinsList()
+    lastTeleportTime = tick()
+    
+    farmConnection = RunService.Heartbeat:Connect(function()
+        if not isFarming then
+            farmConnection:Disconnect()
+            return
+        end
+        
+        -- Check if enough time has passed since last teleport
+        local currentTime = tick()
+        if currentTime - lastTeleportTime >= teleportSpeed then
+            -- Time for next teleport
+            controlledTeleport()
+            lastTeleportTime = currentTime
+            
+            -- Update list every 10 teleports
+            if currentPumpkinIndex % 10 == 0 then
+                updatePumpkinsList()
+            end
+        end
+    end)
+end
+
+local function stopFarming()
+    isFarming = false
+    farmButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50) -- Red when stopped
+    farmButton.Text = "🚀 INICIAR AUTOFARM"
+    
+    if farmConnection then
+        farmConnection:Disconnect()
+    end
+    print("⏹️ AUTOFARM PARADO")
+end
+
+-- Button click events
+farmButton.MouseButton1Click:Connect(function()
+    if isFarming then
+        stopFarming()
+    else
+        startFarming()
+    end
+end)
+
+-- Speed control
+speedDownButton.MouseButton1Click:Connect(function()
+    if teleportSpeed < 3 then
+        teleportSpeed = teleportSpeed + 0.5
+        updateSpeedDisplay()
+        print("Velocidade diminuída: " .. teleportSpeed .. "s")
+    end
+end)
+
+speedUpButton.MouseButton1Click:Connect(function()
+    if teleportSpeed > 0.5 then
+        teleportSpeed = teleportSpeed - 0.5
+        updateSpeedDisplay()
+        print("Velocidade aumentada: " .. teleportSpeed .. "s")
+    end
+end)
+
+-- Auto-update pumpkin count every 10 seconds
+local updateConnection
+updateConnection = RunService.Heartbeat:Connect(function()
+    if tick() % 10 < 0.1 then
+        updatePumpkinsList()
+    end
+end)
+
+-- Character handling
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    humanoid = character:WaitForChild("Humanoid")
+    rootPart = character:WaitForChild("HumanoidRootPart")
+    
+    -- Restart farming if it was active
+    if isFarming then
+        wait(2) -- Wait for character to fully load
+        startFarming()
+    end
+end)
+
+-- Initial setup
+updatePumpkinsList()
+updateSpeedDisplay()
+
+print("=== AUTOFARM COM VELOCIDADE CONTROLADA ===")
+print("Toque no botão VERMELHO para iniciar")
+print("Toque no botão VERDE para parar")
+print("Use ➖ e ➕ para controlar a velocidade")
+print("Velocidade atual: " .. teleportSpeed .. " segundos entre teleportes")
