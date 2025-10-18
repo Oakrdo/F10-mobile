@@ -1,0 +1,272 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+-- Get local player
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Lamps variables
+local currentLampIndex = 1
+local lampsList = {}
+
+-- Create UI for mobile
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "LampTeleportUI"
+screenGui.Parent = player.PlayerGui
+
+-- Function to find all lamps in the map
+local function updateLampsList()
+    lampsList = {}
+    
+    local mapFolder = workspace:FindFirstChild("Map")
+    if not mapFolder then 
+        print("❌ Pasta 'Map' não encontrada!")
+        return 
+    end
+    
+    local lanternsFolder = mapFolder:FindFirstChild("Lanterns")
+    if not lanternsFolder then 
+        print("❌ Pasta 'Lanterns' não encontrada!")
+        return 
+    end
+    
+    -- Find all lamp models
+    for _, obj in ipairs(lanternsFolder:GetDescendants()) do
+        if obj:IsA("Model") and obj.Name == "lamp" then
+            local primaryPart = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+            if primaryPart then
+                table.insert(lampsList, {
+                    Model = obj,
+                    Position = primaryPart.Position,
+                    PrimaryPart = primaryPart
+                })
+            end
+        end
+    end
+    
+    print("💡 Lamps encontradas: " .. #lampsList)
+end
+
+-- Function to ensure character is free
+local function ensureCharacterIsFree()
+    -- Make sure humanoid is not seated and can move
+    if humanoid then
+        humanoid.Sit = false
+        humanoid.PlatformStand = false
+    end
+    
+    -- Make sure rootPart is not anchored
+    if rootPart then
+        rootPart.Anchored = false
+    end
+    
+    -- Remove any welds or constraints that might be restricting movement
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("Weld") or part:IsA("WeldConstraint") then
+            -- Only remove welds that are not essential for character structure
+            if part.Part1 ~= rootPart and part.Name ~= "Neck" and part.Name ~= "Waist" then
+                part:Destroy()
+            end
+        end
+    end
+end
+
+-- Function to teleport to current lamp
+local function teleportToCurrentLamp()
+    if #lampsList == 0 then
+        updateLampsList()
+        if #lampsList == 0 then
+            print("❌ Nenhuma lamp encontrada!")
+            return
+        end
+    end
+    
+    local lamp = lampsList[currentLampIndex]
+    if lamp and lamp.Model.Parent then
+        -- Ensure character is free before teleporting
+        ensureCharacterIsFree()
+        
+        -- Wait a tiny bit to ensure character is free
+        wait(0.1)
+        
+        -- Teleport to lamp position (slightly above)
+        local teleportPosition = lamp.Position + Vector3.new(0, 5, 0)
+        rootPart.CFrame = CFrame.new(teleportPosition)
+        
+        -- Ensure character stays free after teleport
+        ensureCharacterIsFree()
+        
+        print("💡 Teleportado para lamp " .. currentLampIndex .. "/" .. #lampsList)
+        print("✅ Personagem está livre para se mover!")
+    else
+        print("❌ Lamp não encontrada, atualizando lista...")
+        updateLampsList()
+    end
+end
+
+-- Function to go to next lamp
+local function nextLamp()
+    if #lampsList == 0 then
+        updateLampsList()
+        if #lampsList == 0 then return end
+    end
+    
+    currentLampIndex = currentLampIndex + 1
+    if currentLampIndex > #lampsList then
+        currentLampIndex = 1
+    end
+    
+    teleportToCurrentLamp()
+    updateDisplay()
+end
+
+-- Function to go to previous lamp
+local function previousLamp()
+    if #lampsList == 0 then
+        updateLampsList()
+        if #lampsList == 0 then return end
+    end
+    
+    currentLampIndex = currentLampIndex - 1
+    if currentLampIndex < 1 then
+        currentLampIndex = #lampsList
+    end
+    
+    teleportToCurrentLamp()
+    updateDisplay()
+end
+
+-- Create navigation buttons
+local prevButton = Instance.new("TextButton")
+prevButton.Name = "PrevButton"
+prevButton.Size = UDim2.new(0, 80, 0, 60)
+prevButton.Position = UDim2.new(0.3, -40, 0, 100)
+prevButton.BackgroundColor3 = Color3.fromRGB(255, 150, 50)
+prevButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+prevButton.Text = "⬅️ VOLTAR"
+prevButton.TextScaled = true
+prevButton.Font = Enum.Font.GothamBold
+prevButton.Parent = screenGui
+
+local nextButton = Instance.new("TextButton")
+nextButton.Name = "NextButton"
+nextButton.Size = UDim2.new(0, 80, 0, 60)
+nextButton.Position = UDim2.new(0.7, -40, 0, 100)
+nextButton.BackgroundColor3 = Color3.fromRGB(255, 150, 50)
+nextButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+nextButton.Text = "PRÓXIMA ➡️"
+nextButton.TextScaled = true
+nextButton.Font = Enum.Font.GothamBold
+nextButton.Parent = screenGui
+
+-- Refresh button
+local refreshButton = Instance.new("TextButton")
+refreshButton.Name = "RefreshButton"
+refreshButton.Size = UDim2.new(0, 100, 0, 40)
+refreshButton.Position = UDim2.new(0.5, -50, 0, 170)
+refreshButton.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+refreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+refreshButton.Text = "🔄 ATUALIZAR"
+refreshButton.TextScaled = true
+refreshButton.Font = Enum.Font.Gotham
+refreshButton.Parent = screenGui
+
+-- Free movement button (extra safety)
+local freeButton = Instance.new("TextButton")
+freeButton.Name = "FreeButton"
+freeButton.Size = UDim2.new(0, 120, 0, 40)
+freeButton.Position = UDim2.new(0.5, -60, 0, 220)
+freeButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+freeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+freeButton.Text = "🔓 LIBERAR PERSONAGEM"
+freeButton.TextScaled = true
+freeButton.Font = Enum.Font.Gotham
+freeButton.Parent = screenGui
+
+-- Display label
+local displayLabel = Instance.new("TextLabel")
+displayLabel.Name = "DisplayLabel"
+displayLabel.Size = UDim2.new(0, 200, 0, 40)
+displayLabel.Position = UDim2.new(0.5, -100, 0, 50)
+displayLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+displayLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+displayLabel.Text = "Lamps: 0/0"
+displayLabel.TextScaled = true
+displayLabel.Font = Enum.Font.Gotham
+displayLabel.Parent = screenGui
+
+-- Add corners to all buttons and label
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = prevButton
+corner:Clone().Parent = nextButton
+corner:Clone().Parent = refreshButton
+corner:Clone().Parent = freeButton
+corner:Clone().Parent = displayLabel
+
+-- Add shadows
+local shadow = Instance.new("UIStroke")
+shadow.Color = Color3.fromRGB(0, 0, 0)
+shadow.Thickness = 2
+shadow.Parent = prevButton
+shadow:Clone().Parent = nextButton
+shadow:Clone().Parent = refreshButton
+shadow:Clone().Parent = freeButton
+shadow:Clone().Parent = displayLabel
+
+-- Function to update display
+local function updateDisplay()
+    if #lampsList > 0 then
+        displayLabel.Text = "💡 " .. currentLampIndex .. "/" .. #lampsList
+        displayLabel.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+    else
+        displayLabel.Text = "💡 Lamps: 0"
+        displayLabel.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+    end
+end
+
+-- Button click events
+prevButton.MouseButton1Click:Connect(previousLamp)
+nextButton.MouseButton1Click:Connect(nextLamp)
+
+refreshButton.MouseButton1Click:Connect(function()
+    updateLampsList()
+    currentLampIndex = 1
+    updateDisplay()
+    if #lampsList > 0 then
+        teleportToCurrentLamp()
+    end
+end)
+
+freeButton.MouseButton1Click:Connect(function()
+    ensureCharacterIsFree()
+    print("✅ Personagem liberado manualmente!")
+end)
+
+-- Character handling
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    humanoid = character:WaitForChild("Humanoid")
+    rootPart = character:WaitForChild("HumanoidRootPart")
+    ensureCharacterIsFree()
+end)
+
+-- Initial setup
+updateLampsList()
+updateDisplay()
+ensureCharacterIsFree()
+
+-- Auto-teleport to first lamp if found
+if #lampsList > 0 then
+    wait(2)
+    teleportToCurrentLamp()
+end
+
+print("=== TELEPORT PARA LAMPS ===")
+print("⬅️ VOLTAR - Teleporta para lamp anterior")
+print("PRÓXIMA ➡️ - Teleporta para próxima lamp")
+print("🔄 ATUALIZAR - Recarrega a lista de lamps")
+print("🔓 LIBERAR - Garante que o personagem está livre")
+print("✅ Personagem sempre fica livre após teleporte!")
