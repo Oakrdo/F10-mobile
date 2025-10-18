@@ -18,6 +18,17 @@ local lastTeleportTime = 0
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoFarmUI"
 screenGui.Parent = player.PlayerGui
+screenGui.Enabled = true
+
+-- Function to hide UI
+local function hideUI()
+    screenGui.Enabled = false
+end
+
+-- Function to show UI
+local function showUI()
+    screenGui.Enabled = true
+end
 
 -- Create farm button
 local farmButton = Instance.new("TextButton")
@@ -241,19 +252,36 @@ player.CharacterAdded:Connect(function(newCharacter)
     humanoid = character:WaitForChild("Humanoid")
     rootPart = character:WaitForChild("HumanoidRootPart")
     
-    -- Restart farming if it was active
+    -- Hide UI when character respawns
+    hideUI()
+    stopFarming() -- Stop farming when character resets
+    
+    -- Wait a bit and show UI again
+    wait(3)
+    showUI()
+    
+    -- Restart farming if it was active before reset
     if isFarming then
-        wait(2) -- Wait for character to fully load
+        wait(1)
         startFarming()
     end
 end)
+
+-- Detect when character dies (resets)
+if humanoid then
+    humanoid.Died:Connect(function()
+        print("💀 Personagem morreu - UI será escondida e autofarm parado")
+        hideUI()
+        stopFarming()
+    end)
+end
 
 -- Initial setup
 updatePumpkinsList()
 updateSpeedDisplay()
 
-print("=== AUTOFARM COM VELOCIDADE CONTROLADA ===")
+print("=== AUTOFARM DE PUMPKINS ===")
 print("Toque no botão VERMELHO para iniciar")
 print("Toque no botão VERDE para parar")
 print("Use ➖ e ➕ para controlar a velocidade")
-print("Velocidade atual: " .. teleportSpeed .. " segundos entre teleportes")
+print("📱 UI some automaticamente quando o personagem reseta")
