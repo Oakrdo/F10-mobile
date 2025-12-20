@@ -1,126 +1,42 @@
--- Script para dropar APENAS o item na mão (Trigon)
+-- Script simples: Botão = Backspace (Trigon)
+local VirtualInput = game:GetService("VirtualInputManager")
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
+local player = Players.LocalPlayer
 
--- Aguardar personagem carregar
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+-- Criar botão
+local gui = Instance.new("ScreenGui")
+gui.Name = "SimpleBackspaceButton"
+gui.Parent = player:WaitForChild("PlayerGui")
 
--- Função para dropar SOMENTE o item na mão
-local function dropItemInHand()
-    -- Procurar por ferramentas no personagem (na mão)
-    local itemInHand = nil
+local button = Instance.new("TextButton")
+button.Name = "BackspaceBtn"
+button.Size = UDim2.new(0, 150, 0, 60)
+button.Position = UDim2.new(0.05, 0, 0.9, -60)
+button.Text = "BACKSPACE"
+button.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Font = Enum.Font.GothamBold
+button.TextSize = 18
+
+-- Função que simula Backspace
+button.MouseButton1Click:Connect(function()
+    print("🔘 Simulando Backspace...")
     
-    -- Verificar em todas as partes do personagem
-    for _, child in pairs(Character:GetChildren()) do
-        if child:IsA("Tool") then
-            itemInHand = child
-            break
-        end
+    -- Método mais eficaz para simular tecla
+    for i = 1, 3 do  -- Envia múltiplos pulsos para garantir
+        VirtualInput:SendKeyEvent(true, Enum.KeyCode.Backspace, false, nil)
+        task.wait(0.01)
+        VirtualInput:SendKeyEvent(false, Enum.KeyCode.Backspace, false, nil)
+        task.wait(0.01)
     end
     
-    -- Se não encontrou, verificar se está como filho direto do Humanoid (equipado)
-    if not itemInHand then
-        local humanoid = Character:FindFirstChild("Humanoid")
-        if humanoid then
-            itemInHand = humanoid:FindFirstChildOfClass("Tool")
-        end
-    end
-    
-    if not itemInHand then
-        print("❌ Nenhum item na mão para dropar")
-        return
-    end
-    
-    print("✅ Encontrado item na mão: " .. itemInHand.Name)
-    
-    -- Salvar a posição atual do item (se tiver Handle)
-    local itemHandle = itemInHand:FindFirstChild("Handle") or itemInHand.PrimaryPart
-    
-    -- Remover o item do personagem
-    itemInHand.Parent = Workspace
-    
-    -- Posicionar o item no chão (não abaixo do mapa)
-    if itemHandle then
-        -- Calcular posição na frente do jogador, NO CHÃO
-        local dropPosition = HumanoidRootPart.Position + (HumanoidRootPart.CFrame.LookVector * 4)
-        
-        -- Ajustar Y para ficar no chão
-        local rayOrigin = Vector3.new(dropPosition.X, HumanoidRootPart.Position.Y + 5, dropPosition.Z)
-        local rayDirection = Vector3.new(0, -50, 0)
-        local raycastParams = RaycastParams.new()
-        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-        raycastParams.FilterDescendantsInstances = {Character, itemInHand}
-        
-        local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-        
-        if raycastResult then
-            -- Posicionar no chão encontrado
-            itemHandle.CFrame = CFrame.new(raycastResult.Position + Vector3.new(0, 2, 0))
-        else
-            -- Se não encontrar chão, usar posição padrão
-            itemHandle.CFrame = CFrame.new(dropPosition.X, HumanoidRootPart.Position.Y - 2, dropPosition.Z)
-        end
-        
-        -- Orientar o item corretamente
-        itemHandle.CFrame = CFrame.new(itemHandle.Position) * CFrame.Angles(0, math.rad(90), 0)
-        
-        -- Adicionar física para não cair infinitamente
-        task.wait(0.1)
-        
-        -- Garantir que o item fique no lugar
-        local bodyPosition = Instance.new("BodyPosition")
-        bodyPosition.Position = itemHandle.Position
-        bodyPosition.MaxForce = Vector3.new(4000, 4000, 4000)
-        bodyPosition.P = 10000
-        bodyPosition.Parent = itemHandle
-        
-        local bodyGyro = Instance.new("BodyGyro")
-        bodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
-        bodyGyro.P = 10000
-        bodyGyro.CFrame = itemHandle.CFrame
-        bodyGyro.Parent = itemHandle
-        
-        -- Remover após 0.5 segundos para o item cair naturalmente
-        game:GetService("Debris"):AddItem(bodyPosition, 0.5)
-        game:GetService("Debris"):AddItem(bodyGyro, 0.5)
-        
-        print("✅ Item dropado no chão: " .. itemInHand.Name)
-    end
-end
-
--- Criar botão na tela (opcional)
-local function createDropButton()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "TrigonDropGUI"
-    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    
-    local dropButton = Instance.new("TextButton")
-    dropButton.Name = "DropHandButton"
-    dropButton.Size = UDim2.new(0, 140, 0, 60)
-    dropButton.Position = UDim2.new(0.92, -150, 0.88, 0)
-    dropButton.Text = "✋ DROP DA MÃO"
-    dropButton.BackgroundColor3 = Color3.fromRGB(59, 153, 252)
-    dropButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    dropButton.Font = Enum.Font.GothamBold
-    dropButton.TextSize = 16
-    dropButton.Parent = screenGui
-    
-    dropButton.MouseButton1Click:Connect(dropItemInHand)
-    
-    return dropButton
-end
-
--- Inicializar
-local dropButton = createDropButton()
-print("✅ Script Trigon - Drop da Mão carregado!")
-print("🎮 Clique no botão azul para dropar APENAS o item na sua mão")
-
--- Também pode usar tecla se quiser (opcional)
-local UIS = game:GetService("UserInputService")
-UIS.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.G then -- Pressione G para dropar
-        dropItemInHand()
-    end
+    -- Feedback
+    button.Text = "✅ Pressionado!"
+    button.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+    task.wait(0.3)
+    button.Text = "BACKSPACE"
+    button.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
 end)
+
+button.Parent = gui
+print("✅ Botão Backspace pronto! Clique para usar.")
