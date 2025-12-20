@@ -1,95 +1,126 @@
--- Script com interface visual para Trigon
+-- Script para dropar APENAS o item na mão (Trigon)
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
-local Backpack = LocalPlayer.Backpack
-local Character = LocalPlayer.Character
 
--- Criar interface
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DropGUI_Trigon"
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+-- Aguardar personagem carregar
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
-local DropButton = Instance.new("TextButton")
-DropButton.Name = "DropBtn"
-DropButton.Size = UDim2.new(0, 120, 0, 50)
-DropButton.Position = UDim2.new(0.9, -130, 0.85, 0) -- Canto inferior direito
-DropButton.Text = "🗑️ DROP ITEM"
-DropButton.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-DropButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-DropButton.Font = Enum.Font.GothamBold
-DropButton.TextSize = 16
-DropButton.Parent = ScreenGui
-
--- Função de drop melhorada
-local function dropItem()
-    if not Character then
-        Character = LocalPlayer.Character
-        if not Character then
-            print("❌ Personagem não encontrado")
-            return
+-- Função para dropar SOMENTE o item na mão
+local function dropItemInHand()
+    -- Procurar por ferramentas no personagem (na mão)
+    local itemInHand = nil
+    
+    -- Verificar em todas as partes do personagem
+    for _, child in pairs(Character:GetChildren()) do
+        if child:IsA("Tool") then
+            itemInHand = child
+            break
         end
     end
     
-    local HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
-    if not HumanoidRootPart then
-        print("❌ HumanoidRootPart não encontrado")
+    -- Se não encontrou, verificar se está como filho direto do Humanoid (equipado)
+    if not itemInHand then
+        local humanoid = Character:FindFirstChild("Humanoid")
+        if humanoid then
+            itemInHand = humanoid:FindFirstChildOfClass("Tool")
+        end
+    end
+    
+    if not itemInHand then
+        print("❌ Nenhum item na mão para dropar")
         return
     end
     
-    -- Verificar item equipado
-    local humanoid = Character:FindFirstChild("Humanoid")
-    local itemToDrop = nil
+    print("✅ Encontrado item na mão: " .. itemInHand.Name)
     
-    if humanoid then
-        itemToDrop = humanoid:FindFirstChildOfClass("Tool")
-    end
+    -- Salvar a posição atual do item (se tiver Handle)
+    local itemHandle = itemInHand:FindFirstChild("Handle") or itemInHand.PrimaryPart
     
-    -- Se não tem equipado, pegar da mochila
-    if not itemToDrop and Backpack then
-        for _, item in pairs(Backpack:GetChildren()) do
-            if item:IsA("Tool") then
-                itemToDrop = item
-                break
-            end
-        end
-    end
+    -- Remover o item do personagem
+    itemInHand.Parent = Workspace
     
-    if itemToDrop then
-        -- Dropar o item
-        itemToDrop.Parent = workspace
+    -- Posicionar o item no chão (não abaixo do mapa)
+    if itemHandle then
+        -- Calcular posição na frente do jogador, NO CHÃO
+        local dropPosition = HumanoidRootPart.Position + (HumanoidRootPart.CFrame.LookVector * 4)
         
-        -- Posicionar na frente do jogador
-        local dropCFrame = HumanoidRootPart.CFrame * CFrame.new(0, 0, -4)
-        if itemToDrop:FindFirstChild("Handle") then
-            itemToDrop.Handle.CFrame = dropCFrame
+        -- Ajustar Y para ficar no chão
+        local rayOrigin = Vector3.new(dropPosition.X, HumanoidRootPart.Position.Y + 5, dropPosition.Z)
+        local rayDirection = Vector3.new(0, -50, 0)
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+        raycastParams.FilterDescendantsInstances = {Character, itemInHand}
+        
+        local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+        
+        if raycastResult then
+            -- Posicionar no chão encontrado
+            itemHandle.CFrame = CFrame.new(raycastResult.Position + Vector3.new(0, 2, 0))
         else
-            itemToDrop:SetPrimaryPartCFrame(dropCFrame)
+            -- Se não encontrar chão, usar posição padrão
+            itemHandle.CFrame = CFrame.new(dropPosition.X, HumanoidRootPart.Position.Y - 2, dropPosition.Z)
         end
         
-        -- Pequeno impulso para cima
-        local bodyVelocity = Instance.new("BodyVelocity")
-        bodyVelocity.Velocity = Vector3.new(0, 25, 0)
-        bodyVelocity.MaxForce = Vector3.new(0, 1000, 0)
-        bodyVelocity.Parent = itemToDrop.PrimaryPart or itemToDrop:FindFirstChildWhichIsA("BasePart")
+        -- Orientar o item corretamente
+        itemHandle.CFrame = CFrame.new(itemHandle.Position) * CFrame.Angles(0, math.rad(90), 0)
         
-        game:GetService("Debris"):AddItem(bodyVelocity, 0.2)
+        -- Adicionar física para não cair infinitamente
+        task.wait(0.1)
         
-        DropButton.Text = "✅ DROPADO!"
-        task.wait(0.5)
-        DropButton.Text = "🗑️ DROP ITEM"
+        -- Garantir que o item fique no lugar
+        local bodyPosition = Instance.new("BodyPosition")
+        bodyPosition.Position = itemHandle.Position
+        bodyPosition.MaxForce = Vector3.new(4000, 4000, 4000)
+        bodyPosition.P = 10000
+        bodyPosition.Parent = itemHandle
         
-        print("✅ Item dropado: " .. itemToDrop.Name)
-    else
-        DropButton.Text = "❌ VAZIO"
-        task.wait(0.5)
-        DropButton.Text = "🗑️ DROP ITEM"
-        print("❌ Nenhum item para dropar")
+        local bodyGyro = Instance.new("BodyGyro")
+        bodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
+        bodyGyro.P = 10000
+        bodyGyro.CFrame = itemHandle.CFrame
+        bodyGyro.Parent = itemHandle
+        
+        -- Remover após 0.5 segundos para o item cair naturalmente
+        game:GetService("Debris"):AddItem(bodyPosition, 0.5)
+        game:GetService("Debris"):AddItem(bodyGyro, 0.5)
+        
+        print("✅ Item dropado no chão: " .. itemInHand.Name)
     end
 end
 
--- Conectar botão
-DropButton.MouseButton1Click:Connect(dropItem)
+-- Criar botão na tela (opcional)
+local function createDropButton()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "TrigonDropGUI"
+    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    
+    local dropButton = Instance.new("TextButton")
+    dropButton.Name = "DropHandButton"
+    dropButton.Size = UDim2.new(0, 140, 0, 60)
+    dropButton.Position = UDim2.new(0.92, -150, 0.88, 0)
+    dropButton.Text = "✋ DROP DA MÃO"
+    dropButton.BackgroundColor3 = Color3.fromRGB(59, 153, 252)
+    dropButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    dropButton.Font = Enum.Font.GothamBold
+    dropButton.TextSize = 16
+    dropButton.Parent = screenGui
+    
+    dropButton.MouseButton1Click:Connect(dropItemInHand)
+    
+    return dropButton
+end
 
-print("✅ Script de Drop carregado pelo Trigon!")
-print("📱 Clique no botão vermelho para dropar itens")
+-- Inicializar
+local dropButton = createDropButton()
+print("✅ Script Trigon - Drop da Mão carregado!")
+print("🎮 Clique no botão azul para dropar APENAS o item na sua mão")
+
+-- Também pode usar tecla se quiser (opcional)
+local UIS = game:GetService("UserInputService")
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.G then -- Pressione G para dropar
+        dropItemInHand()
+    end
+end)
