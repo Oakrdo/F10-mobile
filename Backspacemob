@@ -1,0 +1,373 @@
+--[[
+    BACKSPACE MOBILE - Script Universal
+    Simula a tecla Backspace no celular para dropar itens
+    Funciona em qualquer jogo
+]]
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+
+local Player = Players.LocalPlayer
+
+-- Configurações
+local BACKSPACE_KEY = Enum.KeyCode.Backspace
+local DROP_ACTION_NAME = "MobileBackspaceDrop"
+local BUTTON_SIZE = 60
+local UI_SCALE = 1.2
+
+-- Cores
+local COLORS = {
+    Button = Color3.fromRGB(220, 60, 60),  -- Vermelho
+    Text = Color3.fromRGB(255, 255, 255),  -- Branco
+    Background = Color3.fromRGB(30, 30, 40, 0.7)
+}
+
+-- Variáveis
+local screenGui = nil
+local dropButton = nil
+local isButtonVisible = true
+
+-- Criar interface mobile
+local function CreateMobileBackspaceUI()
+    if screenGui then screenGui:Destroy() end
+    
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "MobileBackspaceUI"
+    screenGui.Parent = Player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    -- Botão principal de backspace
+    dropButton = Instance.new("TextButton")
+    dropButton.Name = "BackspaceButton"
+    dropButton.Size = UDim2.new(0, BUTTON_SIZE * UI_SCALE, 0, BUTTON_SIZE * UI_SCALE)
+    dropButton.Position = UDim2.new(1, -(BUTTON_SIZE + 10) * UI_SCALE, 0.5, -30)
+    dropButton.AnchorPoint = Vector2.new(1, 0.5)
+    dropButton.Text = "⌫"
+    dropButton.TextColor3 = COLORS.Text
+    dropButton.BackgroundColor3 = COLORS.Button
+    dropButton.TextSize = 24 * UI_SCALE
+    dropButton.Font = Enum.Font.SourceSansBold
+    dropButton.Parent = screenGui
+
+    -- Cantos arredondados
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = dropButton
+
+    -- Borda
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = 2
+    stroke.Parent = dropButton
+
+    -- Sombra
+    local shadow = Instance.new("ImageLabel")
+    shadow.Size = UDim2.new(1, 6, 1, 6)
+    shadow.Position = UDim2.new(0, -3, 0, -3)
+    shadow.Image = "rbxassetid://5554236805"
+    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.ImageTransparency = 0.5
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(23, 23, 277, 277)
+    shadow.BackgroundTransparency = 1
+    shadow.Parent = dropButton
+
+    -- Botão de toggle (mostrar/ocultar)
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Name = "ToggleButton"
+    toggleButton.Size = UDim2.new(0, 30 * UI_SCALE, 0, 30 * UI_SCALE)
+    toggleButton.Position = UDim2.new(0, 10, 0, 10)
+    toggleButton.Text = "⚙️"
+    toggleButton.TextColor3 = COLORS.Text
+    toggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    toggleButton.TextSize = 14 * UI_SCALE
+    toggleButton.Parent = screenGui
+
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0, 6)
+    toggleCorner.Parent = toggleButton
+
+    -- Painel de configurações (inicialmente oculto)
+    local settingsPanel = Instance.new("Frame")
+    settingsPanel.Name = "SettingsPanel"
+    settingsPanel.Size = UDim2.new(0, 200 * UI_SCALE, 0, 150 * UI_SCALE)
+    settingsPanel.Position = UDim2.new(0, 10, 0, 50 * UI_SCALE)
+    settingsPanel.BackgroundColor3 = COLORS.Background
+    settingsPanel.BackgroundTransparency = 0.1
+    settingsPanel.Visible = false
+    settingsPanel.Parent = screenGui
+
+    local panelCorner = Instance.new("UICorner")
+    panelCorner.CornerRadius = UDim.new(0, 8)
+    panelCorner.Parent = settingsPanel
+
+    local panelStroke = Instance.new("UIStroke")
+    panelStroke.Color = Color3.fromRGB(100, 100, 120)
+    panelStroke.Thickness = 1
+    panelStroke.Parent = settingsPanel
+
+    -- Título do painel
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30 * UI_SCALE)
+    title.Text = "⚙️ CONFIGURAÇÕES"
+    title.TextColor3 = COLORS.Text
+    title.BackgroundTransparency = 1
+    title.TextSize = 14 * UI_SCALE
+    title.Font = Enum.Font.SourceSansSemibold
+    title.Parent = settingsPanel
+
+    -- Opção: Modo Hold (segurar para apagar continuamente)
+    local holdOption = Instance.new("TextButton")
+    holdOption.Name = "HoldOption"
+    holdOption.Size = UDim2.new(1, -20, 0, 30 * UI_SCALE)
+    holdOption.Position = UDim2.new(0, 10, 0, 40 * UI_SCALE)
+    holdOption.Text = "⏱️ MODO HOLD: DESLIGADO"
+    holdOption.TextColor3 = COLORS.Text
+    holdOption.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+    holdOption.TextSize = 12 * UI_SCALE
+    holdOption.Parent = settingsPanel
+
+    local holdCorner = Instance.new("UICorner")
+    holdCorner.CornerRadius = UDim.new(0, 6)
+    holdCorner.Parent = holdOption
+
+    -- Opção: Posição do botão
+    local positionOption = Instance.new("TextButton")
+    positionOption.Name = "PositionOption"
+    positionOption.Size = UDim2.new(1, -20, 0, 30 * UI_SCALE)
+    positionOption.Position = UDim2.new(0, 10, 0, 80 * UI_SCALE)
+    positionOption.Text = "📍 POSIÇÃO: LADO DIREITO"
+    positionOption.TextColor3 = COLORS.Text
+    positionOption.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+    positionOption.TextSize = 12 * UI_SCALE
+    positionOption.Parent = settingsPanel
+
+    local posCorner = Instance.new("UICorner")
+    posCorner.CornerRadius = UDim.new(0, 6)
+    posCorner.Parent = positionOption
+
+    -- Botão fechar painel
+    local closePanelBtn = Instance.new("TextButton")
+    closePanelBtn.Name = "ClosePanelBtn"
+    closePanelBtn.Size = UDim2.new(1, -20, 0, 25 * UI_SCALE)
+    closePanelBtn.Position = UDim2.new(0, 10, 1, -35 * UI_SCALE)
+    closePanelBtn.Text = "❌ FECHAR"
+    closePanelBtn.TextColor3 = COLORS.Text
+    closePanelBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+    closePanelBtn.TextSize = 12 * UI_SCALE
+    closePanelBtn.Parent = settingsPanel
+
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.Parent = closePanelBtn
+
+    return {
+        DropButton = dropButton,
+        ToggleButton = toggleButton,
+        SettingsPanel = settingsPanel,
+        HoldOption = holdOption,
+        PositionOption = positionOption,
+        ClosePanelBtn = closePanelBtn
+    }
+end
+
+-- Simular pressionar Backspace
+local function SimulateBackspace()
+    -- Método 1: Usar ContextActionService (funciona em muitos jogos)
+    ContextActionService:Fire(DROP_ACTION_NAME, Enum.UserInputState.Begin)
+    task.wait(0.1)
+    ContextActionService:Fire(DROP_ACTION_NAME, Enum.UserInputState.End)
+    
+    -- Método 2: Simular tecla via RemoteEvent (para alguns jogos específicos)
+    local backpack = Player:FindFirstChild("Backpack")
+    if backpack then
+        -- Tentar dropar itens do inventário
+        for _, item in ipairs(backpack:GetChildren()) do
+            if item:IsA("Tool") then
+                item.Parent = workspace
+                break
+            end
+        end
+    end
+    
+    -- Método 3: Procurar por RemoteEvents de drop
+    for _, obj in ipairs(game:GetDescendants()) do
+        if obj:IsA("RemoteEvent") and (string.find(obj.Name:lower(), "drop") or string.find(obj.Name:lower(), "throw")) then
+            pcall(function()
+                obj:FireServer()
+            end)
+        end
+    end
+    
+    -- Feedback visual
+    dropButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+    task.wait(0.1)
+    dropButton.BackgroundColor3 = COLORS.Button
+    
+    print("⌫ Backspace simulado - Item dropado")
+end
+
+-- Sistema de Hold (segurar para apagar continuamente)
+local holdMode = false
+local isHolding = false
+local holdThread = nil
+
+local function StartHold()
+    if not holdMode or isHolding then return end
+    
+    isHolding = true
+    dropButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+    
+    holdThread = task.spawn(function()
+        while isHolding do
+            SimulateBackspace()
+            task.wait(0.3) -- Intervalo entre drops
+        end
+    end)
+end
+
+local function StopHold()
+    isHolding = false
+    if holdThread then
+        task.cancel(holdThread)
+        holdThread = nil
+    end
+    dropButton.BackgroundColor3 = COLORS.Button
+end
+
+-- Sistema de posicionamento do botão
+local buttonPositions = {
+    "LADO DIREITO",
+    "LADO ESQUERDO", 
+    "INFERIOR DIREITO",
+    "INFERIOR ESQUERDO"
+}
+local currentPosition = 1
+
+local function UpdateButtonPosition()
+    local positions = {
+        [1] = { -- Lado direito
+            Anchor = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -(BUTTON_SIZE + 10) * UI_SCALE, 0.5, -30)
+        },
+        [2] = { -- Lado esquerdo
+            Anchor = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 10, 0.5, -30)
+        },
+        [3] = { -- Inferior direito
+            Anchor = Vector2.new(1, 1),
+            Position = UDim2.new(1, -(BUTTON_SIZE + 10) * UI_SCALE, 1, -(BUTTON_SIZE + 60) * UI_SCALE)
+        },
+        [4] = { -- Inferior esquerdo
+            Anchor = Vector2.new(0, 1),
+            Position = UDim2.new(0, 10, 1, -(BUTTON_SIZE + 60) * UI_SCALE)
+        }
+    }
+    
+    local pos = positions[currentPosition]
+    if pos then
+        dropButton.AnchorPoint = pos.Anchor
+        dropButton.Position = pos.Position
+    end
+end
+
+-- Sistema de arrastar o botão
+local dragInput, dragStart, startPos
+
+dropButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        -- Iniciar arraste
+        dragStart = input.Position
+        startPos = dropButton.Position
+        
+        -- Iniciar hold se o modo estiver ativado
+        StartHold()
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragInput = nil
+                StopHold()
+            end
+        end)
+    end
+end)
+
+dropButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+-- Atualizar posição durante arraste
+game:GetService("RunService").Heartbeat:Connect(function()
+    if dragInput and dragStart then
+        local delta = dragInput.Position - dragStart
+        dropButton.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- Inicialização
+local UI = CreateMobileBackspaceUI()
+
+-- Conexões
+UI.DropButton.MouseButton1Click:Connect(function()
+    if not holdMode then
+        SimulateBackspace()
+    end
+end)
+
+UI.ToggleButton.MouseButton1Click:Connect(function()
+    UI.SettingsPanel.Visible = not UI.SettingsPanel.Visible
+end)
+
+UI.HoldOption.MouseButton1Click:Connect(function()
+    holdMode = not holdMode
+    if holdMode then
+        UI.HoldOption.Text = "⏱️ MODO HOLD: LIGADO"
+        UI.HoldOption.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        UI.HoldOption.Text = "⏱️ MODO HOLD: DESLIGADO"
+        UI.HoldOption.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+        StopHold()
+    end
+end)
+
+UI.PositionOption.MouseButton1Click:Connect(function()
+    currentPosition = (currentPosition % #buttonPositions) + 1
+    UI.PositionOption.Text = "📍 POSIÇÃO: " .. buttonPositions[currentPosition]
+    UpdateButtonPosition()
+end)
+
+UI.ClosePanelBtn.MouseButton1Click:Connect(function()
+    UI.SettingsPanel.Visible = false
+end)
+
+-- Atalho de teclado (se estiver em PC também)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.B then
+        SimulateBackspace()
+    elseif input.KeyCode == Enum.KeyCode.H then
+        holdMode = not holdMode
+        print("Modo Hold: " .. (holdMode and "LIGADO" or "DESLIGADO"))
+    end
+end)
+
+-- Instruções
+print("🎮 BACKSPACE MOBILE CARREGADO!")
+print("👆 Toque no botão vermelho ⌫ para dropar itens")
+print("⚙️ Toque no botão ⚙️ para configurações")
+print("📱 Arraste o botão para reposicionar")
+print("🎮 Teclas: B (Backspace), H (Toggle Hold)")
+
+-- Feedback inicial
+task.wait(1)
+print("💡 Dica: Em muitos jogos, isso vai dropar ferramentas do seu inventário")
+print("💡 Dica: Use o MODO HOLD para dropar itens continuamente")
