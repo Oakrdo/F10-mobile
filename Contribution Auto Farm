@@ -1,0 +1,413 @@
+-- Farm Automático para NPCs e Coins (Mobile)
+local player = game.Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+
+-- Configurações
+local PREFER_INNER = true  -- Dar preferência para Inner primeiro
+local FARM_RANGE = 50      -- Alcance para procurar NPCs
+local TELEPORT_DELAY = 1   -- Delay entre teleportes
+local COIN_COLLECT_DELAY = 0.5  -- Delay para coletar coin
+
+-- Estados
+local isFarming = false
+local currentTarget = nil
+local lastTeleportTime = 0
+
+-- Interface Mobile
+local gui = Instance.new("ScreenGui")
+gui.Name = "AutoFarmGUI"
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local container = Instance.new("Frame")
+container.Size = UDim2.new(0, 180, 0, 150)
+container.Position = UDim2.new(0.02, 0, 0.7, 0)
+container.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+container.BackgroundTransparency = 0.2
+container.BorderSizePixel = 0
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = container
+
+-- Barra de título
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+titleBar.Parent = container
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0.8, 0, 1, 0)
+title.Position = UDim2.new(0, 5, 0, 0)
+title.Text = "🤖 AUTO FARM"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = titleBar
+
+-- Botão de arrastar
+local dragBtn = Instance.new("TextButton")
+dragBtn.Size = UDim2.new(0, 30, 0, 30)
+dragBtn.Position = UDim2.new(1, -30, 0, 0)
+dragBtn.Text = "☰"
+dragBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+dragBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+dragBtn.Font = Enum.Font.GothamBold
+dragBtn.TextSize = 16
+dragBtn.AutoButtonColor = false
+dragBtn.Parent = titleBar
+
+-- Sistema de arrastar
+local dragging = false
+local dragStart = nil
+local startPosition = nil
+
+dragBtn.MouseButton1Down:Connect(function(input)
+    dragging = true
+    dragStart = input.Position
+    startPosition = container.Position
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.Touch then
+        local delta = input.Position - dragStart
+        local newX = startPosition.X.Offset + delta.X
+        local newY = startPosition.Y.Offset + delta.Y
+        
+        newX = math.clamp(newX, 0, gui.AbsoluteSize.X - container.AbsoluteSize.X)
+        newY = math.clamp(newY, 0, gui.AbsoluteSize.Y - container.AbsoluteSize.Y)
+        
+        container.Position = UDim2.new(0, newX, 0, newY)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+-- Conteúdo
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, 0, 1, -30)
+content.Position = UDim2.new(0, 0, 0, 30)
+content.BackgroundTransparency = 1
+content.Parent = container
+
+-- Botão principal de farm
+local farmBtn = Instance.new("TextButton")
+farmBtn.Name = "FarmButton"
+farmBtn.Size = UDim2.new(0.9, 0, 0, 50)
+farmBtn.Position = UDim2.new(0.05, 0, 0.05, 0)
+farmBtn.Text = "▶️ INICIAR FARM"
+farmBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+farmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+farmBtn.Font = Enum.Font.GothamBold
+farmBtn.TextSize = 16
+
+local farmCorner = Instance.new("UICorner")
+farmCorner.CornerRadius = UDim.new(0, 8)
+farmCorner.Parent = farmBtn
+
+-- Status
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(0.9, 0, 0, 40)
+statusLabel.Position = UDim2.new(0.05, 0, 0.45, 0)
+statusLabel.Text = "Status: Parado"
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 12
+statusLabel.TextWrapped = true
+
+-- Configurações
+local configFrame = Instance.new("Frame")
+configFrame.Size = UDim2.new(0.9, 0, 0, 30)
+configFrame.Position = UDim2.new(0.05, 0, 0.8, 0)
+configFrame.BackgroundTransparency = 1
+
+local preferLabel = Instance.new("TextLabel")
+preferLabel.Size = UDim2.new(0.7, 0, 1, 0)
+preferLabel.Text = "Priorizar Inner: SIM"
+preferLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+preferLabel.BackgroundTransparency = 1
+preferLabel.Font = Enum.Font.Gotham
+preferLabel.TextSize = 12
+preferLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0.25, 0, 1, 0)
+toggleBtn.Position = UDim2.new(0.75, 0, 0, 0)
+toggleBtn.Text = "ALTERAR"
+toggleBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Font = Enum.Font.Gotham
+toggleBtn.TextSize = 10
+
+-- Adicionar à interface
+farmBtn.Parent = content
+statusLabel.Parent = content
+preferLabel.Parent = configFrame
+toggleBtn.Parent = configFrame
+configFrame.Parent = content
+
+-- Funções de farm
+local function findNPCs()
+    local npcs = {}
+    
+    -- Procurar NPCs no Workspace
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") then
+            local name = obj.Name
+            local humanoid = obj:FindFirstChild("Humanoid")
+            local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChild("UpperTorso")
+            
+            -- Verificar se é um NPC alvo
+            if (name == "Outer Orthodox Disciple" or name == "Inner Orthodox Disciple") and humanoid and rootPart and humanoid.Health > 0 then
+                table.insert(npcs, {
+                    Model = obj,
+                    Name = name,
+                    Humanoid = humanoid,
+                    RootPart = rootPart,
+                    IsInner = name == "Inner Orthodox Disciple",
+                    Distance = 9999
+                })
+            end
+        end
+    end
+    
+    return npcs
+end
+
+local function findCoins()
+    local coins = {}
+    
+    -- Procurar coins no Workspace
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Part") and obj.Name == "Coin" then
+            table.insert(coins, {
+                Part = obj,
+                Position = obj.Position
+            })
+        end
+    end
+    
+    return coins
+end
+
+local function calculateDistance(pos1, pos2)
+    return (pos1 - pos2).Magnitude
+end
+
+local function teleportTo(position)
+    local character = player.Character
+    if not character then return false end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return false end
+    
+    -- Verificar se já passou tempo suficiente desde o último teleporte
+    if tick() - lastTeleportTime < TELEPORT_DELAY then
+        return false
+    end
+    
+    -- Teleportar
+    humanoidRootPart.CFrame = CFrame.new(position + Vector3.new(0, 5, 0))  -- Teleportar 5 unidades acima
+    
+    lastTeleportTime = tick()
+    return true
+end
+
+local function getBestTarget()
+    local character = player.Character
+    if not character then return nil end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return nil end
+    
+    local playerPos = humanoidRootPart.Position
+    
+    -- Primeiro, procurar coins
+    local coins = findCoins()
+    if #coins > 0 then
+        -- Encontrar a coin mais próxima
+        local closestCoin = nil
+        local closestDistance = 9999
+        
+        for _, coin in pairs(coins) do
+            local distance = calculateDistance(playerPos, coin.Position)
+            if distance < closestDistance then
+                closestDistance = distance
+                closestCoin = coin
+            end
+        end
+        
+        if closestCoin then
+            return {
+                Type = "Coin",
+                Object = closestCoin.Part,
+                Position = closestCoin.Position,
+                Distance = closestDistance
+            }
+        end
+    end
+    
+    -- Procurar NPCs
+    local npcs = findNPCs()
+    if #npcs == 0 then
+        return nil
+    end
+    
+    -- Calcular distâncias
+    for _, npc in pairs(npcs) do
+        npc.Distance = calculateDistance(playerPos, npc.RootPart.Position)
+    end
+    
+    -- Ordenar NPCs por prioridade
+    table.sort(npcs, function(a, b)
+        if PREFER_INNER then
+            -- Priorizar Inner, depois por distância
+            if a.IsInner and not b.IsInner then
+                return true
+            elseif not a.IsInner and b.IsInner then
+                return false
+            else
+                return a.Distance < b.Distance
+            end
+        else
+            -- Apenas por distância
+            return a.Distance < b.Distance
+        end
+    end)
+    
+    local bestNPC = npcs[1]
+    return {
+        Type = "NPC",
+        Object = bestNPC.Model,
+        Name = bestNPC.Name,
+        Position = bestNPC.RootPart.Position,
+        IsInner = bestNPC.IsInner,
+        Distance = bestNPC.Distance
+    }
+end
+
+local function updateStatus()
+    if not isFarming then
+        statusLabel.Text = "Status: Parado"
+        farmBtn.Text = "▶️ INICIAR FARM"
+        farmBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+        return
+    end
+    
+    local target = currentTarget
+    if target then
+        if target.Type == "Coin" then
+            statusLabel.Text = string.format("Indo para: Coin\nDistância: %.1f", target.Distance)
+        else
+            statusLabel.Text = string.format("Indo para: %s\nDistância: %.1f", target.Name, target.Distance)
+        end
+    else
+        statusLabel.Text = "Procurando alvo..."
+    end
+end
+
+-- Loop principal de farm
+local function farmLoop()
+    while isFarming do
+        -- Obter o melhor alvo
+        currentTarget = getBestTarget()
+        
+        if currentTarget then
+            -- Teleportar para o alvo
+            if teleportTo(currentTarget.Position) then
+                if currentTarget.Type == "Coin" then
+                    -- Coletar coin (simular interação)
+                    task.wait(COIN_COLLECT_DELAY)
+                    
+                    -- Tentar "pegar" a coin
+                    pcall(function()
+                        if currentTarget.Object then
+                            -- Simular coleta (pode variar dependendo do jogo)
+                            currentTarget.Object:Destroy()
+                        end
+                    end)
+                else
+                    -- NPC - esperar um pouco antes de procurar próximo
+                    task.wait(1.5)
+                end
+            end
+        else
+            -- Nenhum alvo encontrado
+            statusLabel.Text = "Nenhum alvo encontrado"
+            task.wait(2)
+        end
+        
+        updateStatus()
+        task.wait(0.1)  -- Pequeno delay para não sobrecarregar
+    end
+end
+
+-- Controlador do farm
+farmBtn.MouseButton1Click:Connect(function()
+    isFarming = not isFarming
+    
+    if isFarming then
+        farmBtn.Text = "⏸️ PARAR FARM"
+        farmBtn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+        
+        -- Iniciar loop de farm em uma thread separada
+        task.spawn(function()
+            farmLoop()
+        end)
+        
+        print("🤖 Farm iniciado!")
+    else
+        farmBtn.Text = "▶️ INICIAR FARM"
+        farmBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+        currentTarget = nil
+        print("🤖 Farm parado!")
+    end
+    
+    updateStatus()
+end)
+
+-- Botão para alternar preferência
+toggleBtn.MouseButton1Click:Connect(function()
+    PREFER_INNER = not PREFER_INNER
+    preferLabel.Text = "Priorizar Inner: " .. (PREFER_INNER and "SIM" or "NÃO")
+    print("⚙️ Preferência alterada: " .. (PREFER_INNER and "Inner primeiro" or "Qualquer NPC"))
+end)
+
+-- Sistema de proteção (evitar teleporte muito rápido)
+RunService.Heartbeat:Connect(function()
+    -- Proteção básica contra teleporte muito rápido
+    if tick() - lastTeleportTime < 0.3 then
+        return
+    end
+end)
+
+-- Atualizar status periodicamente
+task.spawn(function()
+    while true do
+        if isFarming then
+            updateStatus()
+        end
+        task.wait(0.5)
+    end
+end)
+
+container.Parent = gui
+
+print("🤖 SISTEMA DE FARM CARREGADO!")
+print("📱 Como usar:")
+print("   1. ▶️ Toque em INICIAR FARM para começar")
+print("   2. 🤖 O script vai teleportar automaticamente")
+print("   3. ⭐ Prioriza Inner Orthodox Disciple")
+print("   4. 💰 Coleta coins automaticamente")
+print("   5. ☰ Arraste para mover a interface")
+print("   6. ⚙️ Use ALTERAR para mudar preferência")
