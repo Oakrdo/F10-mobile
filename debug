@@ -1,191 +1,671 @@
--- Debug Explorer para encontrar Tennenman - Dragon Ball Rage
--- Por: DeepSeek-R1
+-- Mobile Explorer Completo - Com Leitor de Scripts e GUI Clicável
+-- Agora você pode: clicar na GUI do explorador E ler scripts!
 
 wait(2)
 
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
+local mouse = player:GetMouse()
 
--- GUI de Debug
+-- Variáveis
+local selectedPart = nil
+local lastPath = ""
+local isVisible = true
+local currentParent = workspace
+local searchTerm = ""
+local searchDebounce = nil
+local isSearchMode = false
+local navigationHistory = {}
+local historyIndex = 0
+
+-- Criar GUI principal
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TennenmanDebug"
+screenGui.Name = "MobileExplorer"
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
+-- Frame principal
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0.8, 0, 0.8, 0)
-mainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-mainFrame.BackgroundTransparency = 0.1
+mainFrame.Size = UDim2.new(0.9, 0, 0.85, 0)
+mainFrame.Position = UDim2.new(0.05, 0, 0.08, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = true
 mainFrame.Parent = screenGui
 
-local title = Instance.new("TextLabel")
-title.Text = "🔍 DEBUG TENNENMAN - DRAGON BALL RAGE"
-title.Size = UDim2.new(1, 0, 0.1, 0)
+-- Título
+local title = Instance.new("TextButton")
+title.Text = "📱 EXPLORER - " .. currentParent.Name
+title.Size = UDim2.new(1, 0, 0.06, 0)
 title.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
 title.TextColor3 = Color3.new(1, 1, 1)
 title.TextScaled = true
-title.Font = Enum.Font.SourceSansBold
 title.Parent = mainFrame
 
-local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, 0, 0.9, 0)
-scrollFrame.Position = UDim2.new(0, 0, 0.1, 0)
-scrollFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
-scrollFrame.ScrollBarThickness = 10
-scrollFrame.Parent = mainFrame
-
-local contentFrame = Instance.new("Frame")
-contentFrame.Size = UDim2.new(1, 0, 0, 0)
-contentFrame.BackgroundTransparency = 1
-contentFrame.Parent = scrollFrame
-
--- Função para adicionar item na lista
-local function addDebugItem(text, color, isHeader)
-    local itemCount = #contentFrame:GetChildren()
-    local itemFrame = Instance.new("Frame")
-    itemFrame.Size = UDim2.new(1, 0, 0, 30)
-    itemFrame.Position = UDim2.new(0, 0, 0, itemCount * 30)
-    itemFrame.BackgroundColor3 = itemCount % 2 == 0 and Color3.fromRGB(30, 30, 40) or Color3.fromRGB(25, 25, 35)
-    itemFrame.BorderSizePixel = 0
-    itemFrame.Parent = contentFrame
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -10, 1, 0)
-    label.Position = UDim2.new(0, 5, 0, 0)
-    label.Text = text
-    label.TextColor3 = color or Color3.new(1, 1, 1)
-    label.TextScaled = true
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.BackgroundTransparency = 1
-    label.Parent = itemFrame
-    
-    if isHeader then
-        itemFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        label.Font = Enum.Font.SourceSansBold
-    end
-    
-    contentFrame.Size = UDim2.new(1, 0, 0, (itemCount + 1) * 30)
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, (itemCount + 1) * 30)
-end
-
--- Função para explorar toda a estrutura do Workspace
-local function exploreWorkspace()
-    addDebugItem("=== EXPLORANDO WORKSPACE ===", Color3.new(1, 0.5, 0), true)
-    
-    -- Listar todas as pastas principais
-    for _, child in pairs(Workspace:GetChildren()) do
-        addDebugItem("📁 " .. child.Name .. " (" .. child.ClassName .. ")", Color3.new(0.8, 0.8, 1))
-        
-        -- Explorar filhos das pastas importantes
-        if child:IsA("Folder") or child:IsA("Model") then
-            for _, grandChild in pairs(child:GetChildren()) do
-                addDebugItem("   ├── " .. grandChild.Name .. " (" .. grandChild.ClassName .. ")", Color3.new(0.6, 0.8, 1))
-                
-                -- Procurar por NPCs, Tennenman, ou nomes similares
-                if string.find(grandChild.Name:lower(), "npc") or 
-                   string.find(grandChild.Name:lower(), "tennen") or
-                   string.find(grandChild.Name:lower(), "enemy") then
-                    addDebugItem("   │   🎯 POSSÍVEL NPC: " .. grandChild.Name, Color3.new(1, 1, 0))
-                    
-                    -- Explorar mais fundo
-                    for _, greatGrandChild in pairs(grandChild:GetChildren()) do
-                        addDebugItem("   │   ├── " .. greatGrandChild.Name .. " (" .. greatGrandChild.ClassName .. ")", Color3.new(0.8, 1, 0.8))
-                    end
-                end
-            end
-        end
-    end
-    
-    addDebugItem("", Color3.new(1, 1, 1))
-    addDebugItem("=== PROCURANDO POR TENNENMAN ESPECIFICAMENTE ===", Color3.new(1, 0.5, 0), true)
-    
-    -- Buscar por "Tennenman" em todo o Workspace
-    local tennenmanCount = 0
-    for _, descendant in pairs(Workspace:GetDescendants()) do
-        if string.find(descendant.Name:lower(), "tennen") then
-            tennenmanCount = tennenmanCount + 1
-            local path = getFullPath(descendant)
-            addDebugItem("🎯 TENNENMAN ENCONTRADO: " .. path, Color3.new(0, 1, 0))
-        end
-    end
-    
-    if tennenmanCount == 0 then
-        addDebugItem("❌ NENHUM TENNENMAN ENCONTRADO NO WORKSPACE", Color3.new(1, 0, 0))
-        
-        -- Procurar por nomes alternativos
-        addDebugItem("", Color3.new(1, 1, 1))
-        addDebugItem("=== PROCURANDO POR NOMES ALTERNATIVOS ===", Color3.new(1, 0.5, 0), true)
-        
-        local alternativeNames = {"boss", "enemy", "npc", "mob", "villain", "opponent"}
-        for _, name in pairs(alternativeNames) do
-            local count = 0
-            for _, descendant in pairs(Workspace:GetDescendants()) do
-                if string.find(descendant.Name:lower(), name) and descendant:IsA("Model") then
-                    count = count + 1
-                    if count <= 5 then -- Limitar para não sobrecarregar
-                        addDebugItem("🤔 " .. name:upper() .. ": " .. getFullPath(descendant), Color3.new(1, 0.8, 0))
-                    end
-                end
-            end
-            if count > 0 then
-                addDebugItem("📊 Total de " .. name .. ": " .. count, Color3.new(0.8, 0.8, 1))
-            end
-        end
-    end
-    
-    addDebugItem("", Color3.new(1, 1, 1))
-    addDebugItem("=== MODELOS COM HUMANOID (POSSÍVEIS INIMIGOS) ===", Color3.new(1, 0.5, 0), true)
-    
-    -- Listar todos os modelos com Humanoid (possíveis inimigos)
-    local humanoidCount = 0
-    for _, descendant in pairs(Workspace:GetDescendants()) do
-        if descendant:IsA("Model") and descendant:FindFirstChildOfClass("Humanoid") then
-            humanoidCount = humanoidCount + 1
-            if humanoidCount <= 10 then -- Limitar para não sobrecarregar
-                local humanoid = descendant:FindFirstChildOfClass("Humanoid")
-                addDebugItem("👤 " .. descendant.Name .. " (Health: " .. humanoid.Health .. ")", Color3.new(1, 1, 0.5))
-            end
-        end
-    end
-    addDebugItem("📊 Total de modelos com Humanoid: " .. humanoidCount, Color3.new(0.8, 0.8, 1))
-end
-
--- Função para obter o caminho completo de um objeto
-local function getFullPath(obj)
-    local path = obj.Name
-    local parent = obj.Parent
-    while parent and parent ~= Workspace do
-        path = parent.Name .. " → " .. path
-        parent = parent.Parent
-    end
-    return "Workspace → " .. path
-end
-
--- Botão para atualizar
-local refreshButton = Instance.new("TextButton")
-refreshButton.Text = "🔄 ATUALIZAR EXPLORAÇÃO"
-refreshButton.Size = UDim2.new(0.4, 0, 0.08, 0)
-refreshButton.Position = UDim2.new(0.3, 0, 0.92, 0)
-refreshButton.BackgroundColor3 = Color3.fromRGB(80, 160, 220)
-refreshButton.TextColor3 = Color3.new(1, 1, 1)
-refreshButton.TextScaled = true
-refreshButton.Parent = screenGui
-
-refreshButton.MouseButton1Click:Connect(function()
-    -- Limpar conteúdo anterior
-    for _, child in pairs(contentFrame:GetChildren()) do
-        child:Destroy()
-    end
-    contentFrame.Size = UDim2.new(1, 0, 0, 0)
-    
-    -- Nova exploração
-    exploreWorkspace()
+title.MouseButton1Click:Connect(function()
+    listObjects(workspace)
 end)
 
--- Iniciar exploração
-exploreWorkspace()
+-- Barra de pesquisa
+local searchFrame = Instance.new("Frame")
+searchFrame.Size = UDim2.new(1, 0, 0.08, 0)
+searchFrame.Position = UDim2.new(0, 0, 0.06, 0)
+searchFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+searchFrame.BorderSizePixel = 0
+searchFrame.Parent = mainFrame
 
-print("🔍 Debug Explorer carregado!")
-print("Verifique a tela para ver a estrutura completa do jogo")
-print("Use o botão 🔄 para atualizar a exploração")
+local searchIcon = Instance.new("TextLabel")
+searchIcon.Size = UDim2.new(0.08, 0, 1, 0)
+searchIcon.Position = UDim2.new(0, 0, 0, 0)
+searchIcon.Text = "🔍"
+searchIcon.BackgroundTransparency = 1
+searchIcon.TextColor3 = Color3.new(1, 1, 1)
+searchIcon.TextScaled = true
+searchIcon.Parent = searchFrame
+
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(0.84, 0, 1, 0)
+searchBox.Position = UDim2.new(0.08, 0, 0, 0)
+searchBox.PlaceholderText = "Pesquisar objetos (nome ou classe)..."
+searchBox.Text = ""
+searchBox.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+searchBox.TextColor3 = Color3.new(1, 1, 1)
+searchBox.TextScaled = true
+searchBox.ClearTextOnFocus = false
+searchBox.Parent = searchFrame
+
+local clearSearchBtn = Instance.new("TextButton")
+clearSearchBtn.Size = UDim2.new(0.08, 0, 1, 0)
+clearSearchBtn.Position = UDim2.new(0.92, 0, 0, 0)
+clearSearchBtn.Text = "✖"
+clearSearchBtn.BackgroundColor3 = Color3.fromRGB(80, 60, 60)
+clearSearchBtn.TextColor3 = Color3.new(1, 1, 1)
+clearSearchBtn.TextScaled = true
+clearSearchBtn.Parent = searchFrame
+
+-- Área de conteúdo (SCROLL)
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(1, 0, 0.56, 0)
+scrollFrame.Position = UDim2.new(0, 0, 0.14, 0)
+scrollFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+scrollFrame.ScrollBarThickness = 8
+scrollFrame.Parent = mainFrame
+
+-- Painel de informações
+local infoFrame = Instance.new("Frame")
+infoFrame.Size = UDim2.new(1, 0, 0.3, 0)
+infoFrame.Position = UDim2.new(0, 0, 0.7, 0)
+infoFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+infoFrame.BorderSizePixel = 0
+infoFrame.Parent = mainFrame
+
+-- Área de texto rolável para mostrar scripts
+local scriptScrollFrame = Instance.new("ScrollingFrame")
+scriptScrollFrame.Size = UDim2.new(1, -10, 0.7, 0)
+scriptScrollFrame.Position = UDim2.new(0, 5, 0, 0)
+scriptScrollFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+scriptScrollFrame.ScrollBarThickness = 6
+scriptScrollFrame.Visible = false
+scriptScrollFrame.Parent = infoFrame
+
+local scriptText = Instance.new("TextLabel")
+scriptText.Size = UDim2.new(1, -10, 0, 0)
+scriptText.Position = UDim2.new(0, 5, 0, 0)
+scriptText.BackgroundTransparency = 1
+scriptText.TextColor3 = Color3.fromRGB(100, 255, 100)
+scriptText.TextWrapped = true
+scriptText.TextXAlignment = Enum.TextXAlignment.Left
+scriptText.TextYAlignment = Enum.TextYAlignment.Top
+scriptText.TextScaled = false
+scriptText.Font = Enum.Font.Code
+scriptText.TextSize = 14
+scriptText.Parent = scriptScrollFrame
+
+local infoText = Instance.new("TextLabel")
+infoText.Size = UDim2.new(1, -10, 0.7, 0)
+infoText.Position = UDim2.new(0, 5, 0, 0)
+infoText.BackgroundTransparency = 1
+infoText.Text = "👆 Toque em um objeto para selecionar\n📁 Clique em pastas para navegar\n📜 Clique em Scripts para LER o código\n🔍 Use a barra de pesquisa"
+infoText.TextColor3 = Color3.new(1, 1, 1)
+infoText.TextWrapped = true
+infoText.TextScaled = true
+infoText.Parent = infoFrame
+
+-- Botão fechar visualizador de script
+local closeScriptBtn = Instance.new("TextButton")
+closeScriptBtn.Size = UDim2.new(0.2, 0, 0.1, 0)
+closeScriptBtn.Position = UDim2.new(0.8, 0, 0.7, 0)
+closeScriptBtn.Text = "🔙 Fechar"
+closeScriptBtn.BackgroundColor3 = Color3.fromRGB(80, 50, 50)
+closeScriptBtn.TextColor3 = Color3.new(1, 1, 1)
+closeScriptBtn.TextScaled = true
+closeScriptBtn.Visible = false
+closeScriptBtn.Parent = infoFrame
+
+closeScriptBtn.MouseButton1Click:Connect(function()
+    scriptScrollFrame.Visible = false
+    infoText.Visible = true
+    closeScriptBtn.Visible = false
+end)
+
+-- Botões de ação
+local buttonFrame = Instance.new("Frame")
+buttonFrame.Size = UDim2.new(1, 0, 0.2, 0)
+buttonFrame.Position = UDim2.new(0, 0, 0.8, 0)
+buttonFrame.BackgroundTransparency = 1
+buttonFrame.Parent = infoFrame
+
+local copyNameBtn = Instance.new("TextButton")
+copyNameBtn.Size = UDim2.new(0.32, 0, 1, -5)
+copyNameBtn.Position = UDim2.new(0.01, 0, 0, 0)
+copyNameBtn.Text = "📋 Nome"
+copyNameBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+copyNameBtn.TextColor3 = Color3.new(1, 1, 1)
+copyNameBtn.TextScaled = true
+copyNameBtn.Parent = buttonFrame
+
+local copyPathBtn = Instance.new("TextButton")
+copyPathBtn.Size = UDim2.new(0.32, 0, 1, -5)
+copyPathBtn.Position = UDim2.new(0.34, 0, 0, 0)
+copyPathBtn.Text = "📂 Caminho"
+copyPathBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+copyPathBtn.TextColor3 = Color3.new(1, 1, 1)
+copyPathBtn.TextScaled = true
+copyPathBtn.Parent = buttonFrame
+
+local backHistoryBtn = Instance.new("TextButton")
+backHistoryBtn.Size = UDim2.new(0.32, 0, 1, -5)
+backHistoryBtn.Position = UDim2.new(0.67, 0, 0, 0)
+backHistoryBtn.Text = "⬅️ Voltar"
+backHistoryBtn.BackgroundColor3 = Color3.fromRGB(100, 70, 70)
+backHistoryBtn.TextColor3 = Color3.new(1, 1, 1)
+backHistoryBtn.TextScaled = true
+backHistoryBtn.Parent = buttonFrame
+
+-- Botão toggle
+local toggleButton = Instance.new("TextButton")
+toggleButton.Text = "📱"
+toggleButton.Size = UDim2.new(0, 60, 0, 60)
+toggleButton.Position = UDim2.new(0.85, 0, 0.02, 0)
+toggleButton.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.TextScaled = true
+toggleButton.Parent = screenGui
+
+-- Função para obter caminho completo
+local function getFullPath(instance)
+    local parts = {}
+    local current = instance
+    
+    while current and current ~= game do
+        table.insert(parts, 1, current.Name)
+        current = current.Parent
+    end
+    
+    return table.concat(parts, ".")
+end
+
+-- FUNÇÃO PARA LER SCRIPT
+local function readScript(scriptObj)
+    local success, content = pcall(function()
+        return scriptObj.Source
+    end)
+    
+    if success and content then
+        -- Mostra o script no visualizador
+        local lines = {}
+        for line in string.gmatch(content, "([^\n]*)\n?") do
+            table.insert(lines, line)
+        end
+        
+        scriptText.Text = content
+        scriptText.Size = UDim2.new(1, -10, 0, math.max(200, #lines * 20))
+        scriptScrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(200, #lines * 20) + 50)
+        
+        -- Esconde infoText e mostra o visualizador
+        infoText.Visible = false
+        scriptScrollFrame.Visible = true
+        closeScriptBtn.Visible = true
+        
+        return true
+    else
+        infoText.Text = "❌ Não foi possível ler o script!\n\n" .. tostring(content)
+        return false
+    end
+end
+
+-- Função para verificar navegável
+local function isNavigable(obj)
+    return obj:IsA("Folder") or 
+           obj:IsA("Model") or 
+           obj:IsA("Tool") or
+           obj:IsA("Player") or
+           obj:IsA("Backpack") or
+           obj:IsA("StarterGui") or
+           obj:IsA("StarterPack") or
+           obj:IsA("StarterPlayer") or
+           (obj:IsA("Instance") and #obj:GetChildren() > 0)
+end
+
+-- Função para obter ícone
+local function getObjectIcon(obj)
+    if obj:IsA("Folder") then
+        return "📁"
+    elseif obj:IsA("Model") then
+        return "🗂️"
+    elseif obj:IsA("Part") or obj:IsA("MeshPart") or obj:IsA("BasePart") then
+        return "🧱"
+    elseif obj:IsA("Script") then
+        return "📜⚡"
+    elseif obj:IsA("LocalScript") then
+        return "📜🖥️"
+    elseif obj:IsA("ModuleScript") then
+        return "📜📦"
+    elseif obj:IsA("Tool") then
+        return "🔧"
+    elseif obj:IsA("GuiObject") or obj:IsA("ScreenGui") then
+        return "🖼️"
+    elseif obj:IsA("Camera") then
+        return "📷"
+    else
+        if string.match(obj.Name, "^%{.*%}$") then
+            return "📁"
+        end
+        return "📄"
+    end
+end
+
+-- Função para selecionar objeto
+local function selectObject(obj)
+    selectedPart = obj
+    lastPath = getFullPath(obj)
+    
+    -- Fecha visualizador de script se estiver aberto
+    scriptScrollFrame.Visible = false
+    infoText.Visible = true
+    closeScriptBtn.Visible = false
+    
+    local extraInfo = ""
+    
+    -- Se for script, oferece botão para ler
+    if obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+        extraInfo = "\n\n📜 É UM SCRIPT! Clique em 'Ler Script' abaixo para ver o código!"
+        
+        -- Botão ler script (dinâmico)
+        local readBtn = Instance.new("TextButton")
+        readBtn.Size = UDim2.new(0.45, 0, 0.3, 0)
+        readBtn.Position = UDim2.new(0.01, 0, 0.7, 0)
+        readBtn.Text = "📖 LER SCRIPT"
+        readBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 50)
+        readBtn.TextColor3 = Color3.new(1, 1, 1)
+        readBtn.TextScaled = true
+        readBtn.Parent = infoFrame
+        
+        readBtn.MouseButton1Click:Connect(function()
+            readScript(obj)
+            readBtn:Destroy()
+        end)
+        
+        -- Remove depois de 5 segundos se não clicar
+        task.wait(5)
+        if readBtn and readBtn.Parent then
+            readBtn:Destroy()
+        end
+    elseif obj:IsA("TextLabel") or obj:IsA("TextButton") then
+        extraInfo = "\n\n📝 TEXTO: \"" .. (obj.Text or "") .. "\""
+    end
+    
+    infoText.Text = "✅ SELECIONADO!\n\n📦 Nome: " .. obj.Name .. 
+                   "\n🔧 Classe: " .. obj.ClassName .. 
+                   extraInfo ..
+                   "\n📂 Caminho:\n" .. lastPath
+    
+    -- Feedback visual
+    local highlight = Instance.new("SelectionBox")
+    highlight.Adornee = obj
+    highlight.Color3 = Color3.fromRGB(0, 200, 255)
+    highlight.LineThickness = 0.05
+    game:GetService("Debris"):AddItem(highlight, 1)
+end
+
+-- Função para listar objetos (GUI da esquerda)
+local function listObjects(parent)
+    isSearchMode = false
+    searchBox.Text = ""
+    
+    if #navigationHistory == 0 or navigationHistory[#navigationHistory] ~= parent then
+        table.insert(navigationHistory, parent)
+        historyIndex = #navigationHistory
+    end
+    
+    currentParent = parent
+    title.Text = "📱 EXPLORER - " .. parent.Name
+    
+    for _, child in pairs(scrollFrame:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    local yPosition = 0
+    local itemHeight = 38
+    local itemsFound = 0
+    
+    local currentPath = getFullPath(parent)
+    
+    -- Botão de caminho
+    local pathButton = Instance.new("TextButton")
+    pathButton.Text = "📍 " .. currentPath
+    pathButton.Size = UDim2.new(1, -10, 0, 25)
+    pathButton.Position = UDim2.new(0, 5, 0, yPosition)
+    pathButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    pathButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+    pathButton.TextScaled = true
+    pathButton.TextXAlignment = Enum.TextXAlignment.Left
+    pathButton.Parent = scrollFrame
+    
+    pathButton.MouseButton1Click:Connect(function()
+        if setclipboard then
+            setclipboard(currentPath)
+            infoText.Text = "✅ Caminho copiado!\n\n" .. currentPath
+        end
+    end)
+    
+    yPosition = yPosition + 30
+    
+    -- Botão voltar
+    if parent ~= workspace and parent ~= game then
+        local backButton = Instance.new("TextButton")
+        backButton.Text = "⬅️ VOLTAR PARA " .. (parent.Parent and parent.Parent.Name or "RAIZ")
+        backButton.Size = UDim2.new(1, -10, 0, itemHeight)
+        backButton.Position = UDim2.new(0, 5, 0, yPosition)
+        backButton.BackgroundColor3 = Color3.fromRGB(100, 70, 70)
+        backButton.TextColor3 = Color3.new(1, 1, 1)
+        backButton.TextScaled = true
+        backButton.Parent = scrollFrame
+        
+        backButton.MouseButton1Click:Connect(function()
+            if parent.Parent then
+                listObjects(parent.Parent)
+            end
+        end)
+        
+        yPosition = yPosition + itemHeight + 5
+        itemsFound = itemsFound + 1
+    end
+    
+    -- Listar filhos
+    local children = {}
+    for _, child in pairs(parent:GetChildren()) do
+        table.insert(children, child)
+    end
+    
+    table.sort(children, function(a, b)
+        local aIsNav = isNavigable(a)
+        local bIsNav = isNavigable(b)
+        if aIsNav ~= bIsNav then
+            return aIsNav
+        end
+        return string.lower(a.Name) < string.lower(b.Name)
+    end)
+    
+    for _, child in pairs(children) do
+        local icon = getObjectIcon(child)
+        local navigable = isNavigable(child)
+        local isScript = child:IsA("Script") or child:IsA("LocalScript") or child:IsA("ModuleScript")
+        
+        local childCount = #child:GetChildren()
+        local countText = ""
+        if #child:GetChildren() > 0 then
+            countText = " (" .. childCount .. ")"
+        end
+        
+        local button = Instance.new("TextButton")
+        button.Text = icon .. " " .. child.Name .. " [" .. child.ClassName .. "]" .. countText
+        button.Size = UDim2.new(1, -10, 0, itemHeight)
+        button.Position = UDim2.new(0, 5, 0, yPosition)
+        
+        if isScript then
+            button.BackgroundColor3 = Color3.fromRGB(80, 50, 30) -- Cor diferente para scripts
+        elseif navigable then
+            button.BackgroundColor3 = Color3.fromRGB(50, 70, 90)
+        else
+            button.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+        end
+        
+        button.TextColor3 = Color3.new(1, 1, 1)
+        button.TextScaled = true
+        button.TextXAlignment = Enum.TextXAlignment.Left
+        button.Parent = scrollFrame
+        
+        button.MouseButton1Click:Connect(function()
+            if navigable then
+                listObjects(child)
+            elseif isScript then
+                selectObject(child)
+                readScript(child) -- Abre automaticamente o script!
+            else
+                selectObject(child)
+            end
+        end)
+        
+        yPosition = yPosition + itemHeight + 2
+        itemsFound = itemsFound + 1
+    end
+    
+    if itemsFound == 0 then
+        local emptyLabel = Instance.new("TextLabel")
+        emptyLabel.Text = "📂 Esta pasta está vazia"
+        emptyLabel.Size = UDim2.new(1, -10, 0, 40)
+        emptyLabel.Position = UDim2.new(0, 5, 0, yPosition + 10)
+        emptyLabel.BackgroundTransparency = 1
+        emptyLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        emptyLabel.TextScaled = true
+        emptyLabel.Parent = scrollFrame
+        yPosition = yPosition + 50
+    end
+    
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPosition + 20)
+end
+
+-- Função de pesquisa
+local function searchObjects(search)
+    if search == "" then
+        listObjects(currentParent)
+        return
+    end
+    
+    isSearchMode = true
+    title.Text = "🔍 PESQUISA: \"" .. search .. "\""
+    
+    for _, child in pairs(scrollFrame:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    local yPosition = 0
+    local itemHeight = 38
+    local itemsFound = 0
+    
+    local backButton = Instance.new("TextButton")
+    backButton.Text = "⬅️ VOLTAR PARA " .. currentParent.Name
+    backButton.Size = UDim2.new(1, -10, 0, itemHeight)
+    backButton.Position = UDim2.new(0, 5, 0, yPosition)
+    backButton.BackgroundColor3 = Color3.fromRGB(70, 100, 70)
+    backButton.TextColor3 = Color3.new(1, 1, 1)
+    backButton.TextScaled = true
+    backButton.Parent = scrollFrame
+    
+    backButton.MouseButton1Click:Connect(function()
+        searchBox.Text = ""
+        listObjects(currentParent)
+    end)
+    
+    yPosition = yPosition + itemHeight + 5
+    
+    local searchResults = {}
+    local searchLower = string.lower(search)
+    
+    local function searchRecursive(obj, depth)
+        if depth > 5 then return end
+        
+        local nameLower = string.lower(obj.Name)
+        local classLower = string.lower(obj.ClassName)
+        
+        if string.find(nameLower, searchLower, 1, true) or 
+           string.find(classLower, searchLower, 1, true) then
+            table.insert(searchResults, obj)
+        end
+        
+        for _, child in pairs(obj:GetChildren()) do
+            searchRecursive(child, depth + 1)
+        end
+    end
+    
+    searchRecursive(currentParent, 0)
+    
+    table.sort(searchResults, function(a, b)
+        return string.lower(a.Name) < string.lower(b.Name)
+    end)
+    
+    for _, obj in pairs(searchResults) do
+        local icon = getObjectIcon(obj)
+        local navigable = isNavigable(obj)
+        local isScript = obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript")
+        
+        local button = Instance.new("TextButton")
+        button.Text = icon .. " " .. obj.Name .. " [" .. obj.ClassName .. "]"
+        button.Size = UDim2.new(1, -10, 0, itemHeight)
+        button.Position = UDim2.new(0, 5, 0, yPosition)
+        
+        if isScript then
+            button.BackgroundColor3 = Color3.fromRGB(80, 50, 30)
+        elseif navigable then
+            button.BackgroundColor3 = Color3.fromRGB(50, 70, 90)
+        else
+            button.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+        end
+        
+        button.TextColor3 = Color3.new(1, 1, 1)
+        button.TextScaled = true
+        button.TextXAlignment = Enum.TextXAlignment.Left
+        button.Parent = scrollFrame
+        
+        button.MouseButton1Click:Connect(function()
+            if navigable then
+                listObjects(obj)
+                searchBox.Text = ""
+            elseif isScript then
+                selectObject(obj)
+                readScript(obj)
+            else
+                selectObject(obj)
+            end
+        end)
+        
+        yPosition = yPosition + itemHeight + 2
+        itemsFound = itemsFound + 1
+    end
+    
+    if itemsFound == 0 then
+        local noResults = Instance.new("TextLabel")
+        noResults.Text = "🔍 Nenhum resultado encontrado para:\n\"" .. search .. "\""
+        noResults.Size = UDim2.new(1, -10, 0, 60)
+        noResults.Position = UDim2.new(0, 5, 0, yPosition + 10)
+        noResults.BackgroundTransparency = 1
+        noResults.TextColor3 = Color3.fromRGB(150, 150, 150)
+        noResults.TextScaled = true
+        noResults.TextWrapped = true
+        noResults.Parent = scrollFrame
+        yPosition = yPosition + 70
+    end
+    
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPosition + 20)
+end
+
+local function performSearch()
+    if searchDebounce then
+        searchDebounce:Disconnect()
+    end
+    
+    searchDebounce = game:GetService("RunService").Stepped:Connect(function()
+        searchDebounce:Disconnect()
+        searchDebounce = nil
+        
+        if searchTerm == "" then
+            listObjects(currentParent)
+        else
+            searchObjects(searchTerm)
+        end
+    end)
+end
+
+-- Eventos
+searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+    searchTerm = searchBox.Text
+    performSearch()
+end)
+
+clearSearchBtn.MouseButton1Click:Connect(function()
+    searchTerm = ""
+    searchBox.Text = ""
+    listObjects(currentParent)
+end)
+
+backHistoryBtn.MouseButton1Click:Connect(function()
+    if historyIndex > 1 then
+        historyIndex = historyIndex - 1
+        listObjects(navigationHistory[historyIndex])
+    end
+end)
+
+copyNameBtn.MouseButton1Click:Connect(function()
+    if selectedPart then
+        if setclipboard then
+            setclipboard(selectedPart.Name)
+            infoText.Text = "✅ Nome copiado!\n\n" .. selectedPart.Name
+        end
+    else
+        infoText.Text = "⚠️ Nenhum objeto selecionado!"
+    end
+end)
+
+copyPathBtn.MouseButton1Click:Connect(function()
+    if lastPath ~= "" then
+        if setclipboard then
+            setclipboard(lastPath)
+            infoText.Text = "✅ Caminho copiado!\n\n" .. lastPath
+        end
+    else
+        infoText.Text = "⚠️ Selecione um objeto primeiro!"
+    end
+end)
+
+toggleButton.MouseButton1Click:Connect(function()
+    isVisible = not isVisible
+    mainFrame.Visible = isVisible
+    toggleButton.Text = isVisible and "📱" or "🔍"
+end)
+
+-- DETECTA TOQUE EM OBJETOS 3D (incluindo TextLabels no mundo)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.UserInputType == Enum.UserInputType.Touch then
+        local target = mouse.Target
+        
+        if target and mainFrame.Visible then
+            -- Isso detecta TextLabels que estão no Workspace!
+            selectObject(target)
+        end
+    end
+end)
+
+-- Iniciar
+listObjects(workspace)
+
+print("✅ Mobile Explorer COMPLETO carregado!")
+print("📜 Agora você pode clicar em SCRIPTS e ler o código!")
+print("🏷️ TextLabels no jogo também são detectados!")
+print("💡 Scripts aparecem com cor diferente na lista!")
